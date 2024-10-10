@@ -25,6 +25,7 @@ namespace AemulusModManager
         public bool darkMode { get; set; } = true;
         public ConfigP3F p3fConfig { get; set; }
         public ConfigP3P p3pConfig { get; set; }
+        public ConfigP3PSwitch p3pSwitchConfig { get; set; }
         public ConfigP4G p4gConfig { get; set; }
         public ConfigP4GVita p4gVitaConfig { get; set; }
         public ConfigP5 p5Config { get; set; }
@@ -126,6 +127,24 @@ namespace AemulusModManager
         public string isoPath { get; set; }
         public string cpkName { get; set; } = "mod.cpk";
         public string launcherPath { get; set; }
+        public bool deleteOldVersions { get; set; }
+        public bool buildWarning { get; set; } = true;
+        public bool buildFinished { get; set; } = true;
+        public bool updateConfirm { get; set; } = true;
+        public bool updateChangelog { get; set; } = true;
+        public bool updateAll { get; set; } = true;
+        public bool updatesEnabled { get; set; } = true;
+        public string loadout { get; set; }
+        public string lastUnpacked { get; set; }
+    }
+
+    public class ConfigP3PSwitch
+    {
+        public string modDir { get; set; }
+        public string gamePath { get; set; }
+        public string cpkName { get; set; } = "mod.cpk";
+        public string launcherPath { get; set; }
+        public string language { get; set; } = "English";
         public bool deleteOldVersions { get; set; }
         public bool buildWarning { get; set; } = true;
         public bool buildFinished { get; set; } = true;
@@ -253,6 +272,15 @@ namespace AemulusModManager
         public string link { get; set; }
         public string description { get; set; }
         public string skippedVersion { get; set; }
+    }
+
+    public class ConfigMetadata
+    {
+        public string name { get; set; }
+        public string modpath { get; set; }
+        public string modgame { get; set; }
+        public string optionname { get; set; }
+        public string description { get; set; }
     }
 
     [Serializable, XmlRoot("Mod")]

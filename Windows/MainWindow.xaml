@@ -657,6 +657,12 @@
                                     <TextBlock Text="Persona 3 Portable" VerticalAlignment="Center" FontFamily="{StaticResource Jost}"/>
                                 </StackPanel>
                             </ComboBoxItem>
+                            <ComboBoxItem>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="../Assets/p3picon.png" Width="32" Margin="4,0,10,0"/>
+                                    <TextBlock Text="Persona 3 Portable (Switch)" VerticalAlignment="Center" FontFamily="{StaticResource Jost}"/>
+                                </StackPanel>
+                            </ComboBoxItem>
                             <ComboBoxItem IsSelected="True">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Image Source="../Assets/p4gicon.png" Width="32" Margin="4,0,10,0"/>
@@ -842,6 +848,7 @@
                                         <ContextMenu>
                                             <MenuItem Header="Open Package Folder" IsCheckable="False" Click="OpenItem_Click"/>
                                             <MenuItem Header="Edit Metadata" IsCheckable="False" Click="EditItem_Click"/>
+                                            <MenuItem Header="Edit Mod Configuration" IsCheckable="False" Click="ConfigItem_Click"/>
                                             <MenuItem Header="Zip Package" IsCheckable="False" Click="ZipItem_Click"/>
                                             <MenuItem Name="ConvertCPK" Header="Convert to CPK Structure" IsCheckable="False" IsEnabled="False" Click="ConvertCPK_Click"/>
                                             <MenuItem Name="UpdateItem" Header="Check For Updates" IsCheckable="False" IsEnabled="False" Click="UpdateItem_Click"/>
@@ -1209,6 +1216,12 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Image Source="../Assets/p3picon.png" Width="32" Margin="4,0,10,0"/>
                                     <TextBlock Text="Persona 3 Portable" VerticalAlignment="Center" FontFamily="{StaticResource Jost}"/>
+                                </StackPanel>
+                            </ComboBoxItem>
+                            <ComboBoxItem>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="../Assets/p3picon.png" Width="32" Margin="4,0,10,0"/>
+                                    <TextBlock Text="Persona 3 Portable (Switch)" VerticalAlignment="Center" FontFamily="{StaticResource Jost}"/>
                                 </StackPanel>
                             </ComboBoxItem>
                             <ComboBoxItem>
