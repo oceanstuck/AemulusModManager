@@ -90,7 +90,7 @@ In order to support merging bin files, each mod/package that edits the bin file 
 Inside is a list of all the files that the package edits. Follow these instructions when typing out the file paths:
 One file path per line.
 In the path, make sure to take out any .bin, .arc, .pak, and .spr extensions (for example, "init_free.bin" becomes "init_free"). 
-Make sure to use '\' and not '/' between directory levels. 
+Make sure to use '\\' and not '/' between directory levels. 
 If the file being addressed is a Texture within a .spr file, give it the .tmx extension.
 Also note that for the specific case of file paths inside Persona 5 event paks, if there's ../../../, just ignore that and just use the rest for the file path.
 
