@@ -2563,7 +2563,7 @@ namespace AemulusModManager
                                 textures = config.p3fConfig.texturesPath;
                             binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
                             AwbMerger.Merge(packages, game, path);
-                            binMerge.Unpack(packages, path, useCpk, cpkLang, game);
+                            binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
                             // Patch files before merging
                             if (packages.Exists(x => Directory.Exists($@"{x}\binarypatches")))
                                 BinaryPatcher.Patch(packages, path, useCpk, cpkLang, game);
@@ -2692,7 +2692,7 @@ namespace AemulusModManager
                             string cheatsWS = null;
                             string textures = config.p3fConfig.texturesPath;
                             binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
-                            binMerge.Unpack(packages, path, useCpk, cpkLang, game);
+                            binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
                             var directory = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)";
                             Utilities.ParallelLogger.Log($"[INFO] Adding unchanged files...");
                             foreach (var file in Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories))
