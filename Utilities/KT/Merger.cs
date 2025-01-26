@@ -38,22 +38,31 @@ namespace AemulusModManager.Utilities.KT
                 "0x5af9ec1e.file", "0x677fed08.file", "0x8a4bdbd7.file", "0x99596bfb.file", "0x9bdb529c.file",
                 "0xab0a4b3d.file", "0xbb926ba0.file", "0xc42cd365.file", "0xcb51f50c.file", "0xd2b2d491.file" };
 
-        public static void Backup(string modPath)
+        public static async Task Backup(string modPath)
         {
             Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data");
+
+            var backupTasks = new List<Task>();
             foreach (var file in original_data)
             {
-                ParallelLogger.Log($@"[INFO] Backing up {modPath}\data\{file}");
-                if (File.Exists($@"{modPath}\data\{file}"))
-                    File.Copy($@"{modPath}\data\{file}", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}", true);
-                else
-                    ParallelLogger.Log($@"[ERROR] Couldn't find {modPath}\data\{file}");
+                backupTasks.Add(Task.Run(() =>
+                {
+                    ParallelLogger.Log($@"[INFO] Backing up {modPath}\data\{file}");
+                    if (File.Exists($@"{modPath}\data\{file}"))
+                        File.Copy($@"{modPath}\data\{file}", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}", true);
+                    else
+                        ParallelLogger.Log($@"[ERROR] Couldn't find {modPath}\data\{file}");
+                }));
             }
             foreach (var rdb in Directory.GetFiles(modPath, "*.rdb"))
             {
-                ParallelLogger.Log($"[INFO] Backing up {rdb}");
-                File.Copy(rdb, $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\{Path.GetFileName(rdb)}", true);
+                backupTasks.Add(Task.Run(() =>
+                {
+                    ParallelLogger.Log($"[INFO] Backing up {rdb}");
+                    File.Copy(rdb, $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\{Path.GetFileName(rdb)}", true);
+                }));
             }
+            await Task.WhenAll(backupTasks);
         }
 
         public static string GetChecksumString(string filePath)

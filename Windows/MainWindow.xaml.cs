@@ -1065,28 +1065,45 @@ namespace AemulusModManager
         {
             return Task.Run(async () =>
             {
-                if (game == "Persona 4 Golden")
-                    PacUnpacker.Unpack(directory, cpkLang);
-                else if (game == "Persona 3 FES")
-                    await PacUnpacker.Unzip(directory);
-                else if (game == "Persona 5")
-                    await PacUnpacker.UnpackP5CPK(directory);
-                else if (game == "Persona 5 Strikers")
-                    Merger.Backup(directory);
-                else if (game == "Persona 3 Portable")
-                    await PacUnpacker.UnzipAndUnpackCPK(directory);
-                else if (game == "Persona 4 Golden (Vita)")
-                    await PacUnpacker.UnpackP4GCPK(directory);
-                else if (game == "Persona Q2")
-                    await PacUnpacker.UnpackPQ2CPK(directory);
-                else if (game == "Persona 5 Royal (PS4)")
-                    await PacUnpacker.UnpackP5RCPKs(directory, p5rConfig.language, p5rConfig.version);
-                else if (game == "Persona 5 Royal (Switch)")
-                    await PacUnpacker.UnpackP5RSwitchCPKs(directory, p5rSwitchConfig.language);
-                else if (game == "Persona Q")
-                    await PacUnpacker.UnpackPQCPK(directory);
-                else if (game == "Persona 1 (PSP)")
-                    await PacUnpacker.UnzipAndUnBin(directory);
+                switch(game)
+                {
+                    case "Persona 4 Golden":
+                        await PacUnpacker.Unpack(directory, cpkLang);
+                        break;
+                    case "Persona 3 FES":
+                        await PacUnpacker.Unzip(directory);
+                        break;
+                    case "Persona 5":
+                        await PacUnpacker.UnpackP5CPK(directory);
+                        break;
+                    case "Persona 5 Strikers":
+                        await Merger.Backup(directory);
+                        break;
+                    case "Persona 3 Portable":
+                        await PacUnpacker.UnzipAndUnpackCPK(directory);
+                        break;
+                    case "Persona 4 Golden (Vita)":
+                        await PacUnpacker.UnpackP4GCPK(directory);
+                        break;
+                    case "Persona Q2":
+                        await PacUnpacker.UnpackPQ2CPK(directory);
+                        break;
+                    case "Persona 5 Royal (PS4)":
+                        await PacUnpacker.UnpackP5RCPKs(directory, p5rConfig.language, p5rConfig.version);
+                        break;
+                    case "Persona 5 Royal (Switch)":
+                        await PacUnpacker.UnpackP5RSwitchCPKs(directory, p5rSwitchConfig.language);
+                        break;
+                    case "Persona Q":
+                        await PacUnpacker.UnpackPQCPK(directory);
+                        break;
+                    case "Persona 1 (PSP)":
+                        await PacUnpacker.UnzipAndUnBin(directory);
+                        break;
+                    default:
+                        Utilities.ParallelLogger.Log("[ERROR] Unrecognized game.");
+                        return;
+                }
                 App.Current.Dispatcher.Invoke((Action)delegate
                 {
                     EnableUI();
@@ -1991,7 +2008,7 @@ namespace AemulusModManager
                 Utilities.ParallelLogger.Log($"[WARNING] Attempting to unpack/backup base files first.");
 
                 string selectedPath = null;
-                if (gamePath == "" || gamePath == null)
+                if (string.IsNullOrEmpty(gamePath))
                 {
                     if (game == "Persona 4 Golden")
                     {

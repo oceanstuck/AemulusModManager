@@ -23,6 +23,8 @@ namespace AemulusModManager
         private static string[] pakExtensions = { ".pak", ".pac", ".pack", ".bin", ".abin", ".tpc", ".fpc", ".gsd", ".arc" };
         private static string[] wantedFileExtensions = { ".bf", ".bmd", ".pm1", ".acb", ".awb", ".ctd", ".ftd", ".dat", ".spd", ".gtx" };
 
+        private static string exe7zip = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\7z\7z.exe";
+
         internal class FileToExtract : IBatchFileExtractorItem
         {
             public string FullPath { get; set; }
@@ -36,51 +38,67 @@ namespace AemulusModManager
         //P1PSP
         public static async Task UnzipAndUnBin(string iso)
         {
-            Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)");
-            if (!File.Exists(iso))
-            {
-                Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
-                return;
-            }
+            var tasks = new List<Task>();
 
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = true;
-            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\7z\7z.exe";
-            if (!File.Exists(startInfo.FileName))
+            tasks.Add(Task.Run(() =>
             {
-                Console.Write($"[ERROR] Couldn't find {startInfo.FileName}. Please check if it was blocked by your anti-virus.");
-                return;
-            }
+                if (!File.Exists(iso))
+                {
+                    Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
+                    throw new FileNotFoundException();
+                }
+            }));
+            tasks.Add(Task.Run(() => { Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)"); }));
+
+            var startInfo = Task<ProcessStartInfo>.Run(() =>
+            {
+                if (!File.Exists(exe7zip))
+                {
+                    Console.Write($"[ERROR] Couldn't find {exe7zip}. Please check if it was blocked by your anti-virus.");
+                    throw new FileNotFoundException();
+                }
+                ProcessStartInfo startInfo = new ProcessStartInfo(exe7zip);
+                startInfo.CreateNoWindow = true;
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                startInfo.UseShellExecute = false;
+                startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)";
+                return startInfo;
+            });
+            tasks.Add(startInfo);
+
+            var ebootDecoder = Task<ProcessStartInfo>.Run(() =>
+            {
+                ProcessStartInfo ebootDecoder = new ProcessStartInfo();
+                ebootDecoder.CreateNoWindow = true;
+                ebootDecoder.UseShellExecute = false;
+                ebootDecoder.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\\DecEboot\deceboot.exe";
+                ebootDecoder.WindowStyle = ProcessWindowStyle.Hidden;
+                ebootDecoder.Arguments = "\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT_ENC.BIN" + "\" \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT.BIN" + "\"";
+                return ebootDecoder;
+            });
+            tasks.Add(ebootDecoder);
+            var validation = Task.WhenAll(tasks);
+            await validation;
+            if (validation.IsFaulted) { return; }
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-
-            var tasks = new List<Task>();
-
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.UseShellExecute = false;
-            startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)";
             Utilities.ParallelLogger.Log($"[INFO] Extracting files from {iso}");
             using (Process process = new Process())
             {
-                process.StartInfo = startInfo;
+                process.StartInfo = startInfo.Result;
                 process.Start();
                 process.WaitForExit();
             }
+            
             File.Move($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT.BIN", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT_ENC.BIN");
-            ProcessStartInfo ebootDecoder = new ProcessStartInfo();
-            ebootDecoder.CreateNoWindow = true;
-            ebootDecoder.UseShellExecute = false;
-            ebootDecoder.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\\DecEboot\deceboot.exe";
-            ebootDecoder.WindowStyle = ProcessWindowStyle.Hidden;
-            ebootDecoder.Arguments = "\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT_ENC.BIN" + "\" \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)\PSP_GAME\SYSDIR\EBOOT.BIN" + "\"";
             Utilities.ParallelLogger.Log($"[INFO] Decrypting EBOOT.BIN");
             using (Process process = new Process())
             {
-                process.StartInfo = ebootDecoder;
+                process.StartInfo = ebootDecoder.Result;
                 process.Start();
 
                 // Add this: wait until process does its work
@@ -96,55 +114,100 @@ namespace AemulusModManager
         // P3F
         public static async Task Unzip(string iso)
         {
-            if (!File.Exists(iso))
-            {
-                Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
-                return;
-            }
+            var validationTasks = new List<Task>();
 
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = true;
-            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\7z\7z.exe";
-            if (!File.Exists(startInfo.FileName))
+            validationTasks.Add(Task.Run(() =>
             {
-                Console.Write($"[ERROR] Couldn't find {startInfo.FileName}. Please check if it was blocked by your anti-virus.");
-                return;
-            }
+                if (!File.Exists(iso))
+                {
+                    Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
+                    throw new FileNotFoundException();
+                }
+            }));
+
+            var getStartInfo = Task<ProcessStartInfo>.Run(() =>
+            {
+                if (!File.Exists(exe7zip))
+                {
+                    Console.Write($"[ERROR] Couldn't find {exe7zip}. Please check if it was blocked by your anti-virus.");
+                    throw new FileNotFoundException();
+                }
+                ProcessStartInfo startInfo = new ProcessStartInfo(exe7zip);
+                startInfo.CreateNoWindow = true;
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                startInfo.UseShellExecute = false;
+                startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES" + "\" BTL.CVM DATA.CVM";
+                return startInfo;
+            });
+            validationTasks.Add(getStartInfo);
+
+            var validation = Task.WhenAll(validationTasks);
+            await validation;
+            if (validation.IsFaulted) { return; }
+            var startInfo = getStartInfo.Result;
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            var tasks = new List<Task>();
+            var extractionTasks = new List<Task>();
 
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.UseShellExecute = false;
-            startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES" + "\" BTL.CVM DATA.CVM";
-            Utilities.ParallelLogger.Log($"[INFO] Extracting BTL.CVM and DATA.CVM from {iso}");
-            using (Process process = new Process())
+            extractionTasks.Add(Task.Run(() =>
             {
-                process.StartInfo = startInfo;
-                process.Start();
-                process.WaitForExit();
-            }
-            startInfo.Arguments = "x -y \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\BTL.CVM" + "\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\BTL" + "\" *.BIN *.PAK *.PAC *.TBL *.SPR *.BF *.BMD *.PM1 *.bf *.bmd *.pm1 *.FPC -r";
-            Utilities.ParallelLogger.Log($"[INFO] Extracting base files from BTL.CVM");
-            using (Process process = new Process())
+                Utilities.ParallelLogger.Log($"[INFO] Extracting BTL.CVM and DATA.CVM from {iso}");
+                using (Process process = new Process())
+                {
+                    process.StartInfo = startInfo;
+                    process.Start();
+                    process.WaitForExit();
+                }
+            }));
+
+            var btlCvmStartInfo = Task<ProcessStartInfo>.Run(() =>
             {
-                process.StartInfo = startInfo;
-                process.Start();
-                process.WaitForExit();
-            }
-            startInfo.Arguments = "x -y \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\DATA.CVM" + "\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\DATA" + "\" *.BIN *.PAK *.PAC *.TBL *.SPR *.BF *.BMD *.PM1 *.bf *.bmd *.pm1 *.FPC -r";
-            Utilities.ParallelLogger.Log($"[INFO] Extracting base files from DATA.CVM");
-            using (Process process = new Process())
+                var _btlCvmInfo = new ProcessStartInfo();
+                _btlCvmInfo = startInfo;
+                _btlCvmInfo.Arguments = "x -y \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\BTL.CVM" + "\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\BTL" + "\" *.BIN *.PAK *.PAC *.TBL *.SPR *.BF *.BMD *.PM1 *.bf *.bmd *.pm1 *.FPC -r";
+
+                return _btlCvmInfo;
+            });
+            extractionTasks.Add(btlCvmStartInfo);
+
+            var dataCvmStartInfo = Task<ProcessStartInfo>.Run(() =>
             {
-                process.StartInfo = startInfo;
-                process.Start();
-                process.WaitForExit();
-            }
-            ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES");
+                var _dataCvmInfo = new ProcessStartInfo();
+                _dataCvmInfo = startInfo;
+                _dataCvmInfo.Arguments = "x -y \"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\DATA.CVM" + "\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\DATA" + "\" *.BIN *.PAK *.PAC *.TBL *.SPR *.BF *.BMD *.PM1 *.bf *.bmd *.pm1 *.FPC -r";
+
+                return _dataCvmInfo;
+            });
+            extractionTasks.Add(dataCvmStartInfo);
+            await Task.WhenAll(extractionTasks);
+
+            var extractionTasks2 = new List<Task>();
+            extractionTasks2.Add(Task.Run(() =>
+            {
+                Utilities.ParallelLogger.Log($"[INFO] Extracting base files from BTL.CVM");
+                using (Process process = new Process())
+                {
+                    process.StartInfo = btlCvmStartInfo.Result;
+                    process.Start();
+                    process.WaitForExit();
+                }
+            }));
+            extractionTasks2.Add(Task.Run(() =>
+            {
+                Utilities.ParallelLogger.Log($"[INFO] Extracting base files from DATA.CVM");
+                using (Process process = new Process())
+                {
+                    process.StartInfo = dataCvmStartInfo.Result;
+                    process.Start();
+                    process.WaitForExit();
+                }
+            }));
+            await Task.WhenAll(extractionTasks2);
+            await ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES");
             File.Delete($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\BTL.CVM");
             File.Delete($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 FES\DATA.CVM");
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
@@ -157,51 +220,71 @@ namespace AemulusModManager
         // P3P
         public static async Task UnzipAndUnpackCPK(string iso)
         {
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable";
-            Directory.CreateDirectory(pathToExtract);
-            if (!File.Exists(iso))
-            {
-                Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
-                return;
-            }
+            var validationTasks = new List<Task>();
 
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = true;
-            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\7z\7z.exe";
-            if (!File.Exists(startInfo.FileName))
+            var pathToExtract = Task<string>.Run(() =>
             {
-                Console.Write($"[ERROR] Couldn't find {startInfo.FileName}. Please check if it was blocked by your anti-virus.");
-                return;
-            }
+                string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable";
+                Directory.CreateDirectory(pathToExtract);
+                return pathToExtract;
+            });
+            validationTasks.Add(pathToExtract);
+
+            validationTasks.Add(Task.Run(() =>
+            {
+                if (!File.Exists(iso))
+                {
+                    Console.Write($"[ERROR] Couldn't find {iso}. Please correct the file path in config.");
+                    throw new FileNotFoundException();
+                }
+            }));
+
+            var startInfo = Task<ProcessStartInfo>.Run(() =>
+            {
+                if (!File.Exists(exe7zip))
+                {
+                    Console.Write($"[ERROR] Couldn't find {exe7zip}. Please check if it was blocked by your anti-virus.");
+                    throw new FileNotFoundException();
+                }
+                ProcessStartInfo startInfo = new ProcessStartInfo(exe7zip);
+                startInfo.CreateNoWindow = true;
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                startInfo.UseShellExecute = false;
+                startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable" + "\" PSP_GAME\\USRDIR\\umd0.cpk";
+                return startInfo;
+            });
+            validationTasks.Add(startInfo);
+
+            var umd0Files = Task<string[]>.Run(() => { return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_umd0.csv"); });
+            validationTasks.Add(umd0Files);
+
+            var validation = Task.WhenAll(validationTasks);
+            await validation;
+            if (validation.IsFaulted) { return; }
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.UseShellExecute = false;
-            startInfo.Arguments = $"x -y \"{iso}\" -o\"" + $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable" + "\" PSP_GAME\\USRDIR\\umd0.cpk";
             Utilities.ParallelLogger.Log($"[INFO] Extracting umd0.cpk from {iso}");
             using (Process process = new Process())
             {
-                process.StartInfo = startInfo;
+                process.StartInfo = startInfo.Result;
                 process.Start();
                 process.WaitForExit();
             }
-
-            string[] umd0Files = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_umd0.csv");
 
             var umd0Path = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\PSP_GAME\USRDIR\umd0.cpk";
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting files from umd0.cpk");
             if (File.Exists(umd0Path))
-                CriFsUnpack(umd0Path, pathToExtract, umd0Files);
+                await CriFsUnpack(umd0Path, pathToExtract.Result, umd0Files.Result);
             else
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\PSP_GAME\USRDIR\umd0.cpk.");
+                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find {umd0Path}.");
 
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
-                ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\data");
+                await ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\data");
             if (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\PSP_GAME"))
                 Directory.Delete($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 3 Portable\PSP_GAME", true);
 
@@ -212,83 +295,122 @@ namespace AemulusModManager
         }
 
         // P4G
-        public static void Unpack(string directory, string cpk)
+        public static async Task Unpack(string directory, string cpk)
         {
-            Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden");
-            if (!Directory.Exists(directory))
+            var setupTasks = new List<Task>();
+            setupTasks.Add(Task.Run(() =>
             {
-                Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {directory}. Please correct the file path in config.");
-                return;
-            }
-            List<string> pacs = new List<string>();
+                if (!Directory.Exists(directory))
+                {
+                    Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {directory}. Please correct the file path in config.");
+                    throw new DirectoryNotFoundException();
+                }
+            }));
+            setupTasks.Add(Task.Run(() => { Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden"); }));
+
+            var getPacs = Task<List<string>>.Run(() =>
+            {
+                List<string> pacs = new List<string>();
+                switch (cpk)
+                {
+                    case "data_e.cpk":
+                        pacs.Add("data00004.pac");
+                        pacs.Add("data_e.cpk");
+                        break;
+                    case "data.cpk":
+                        pacs.Add("data00000.pac");
+                        pacs.Add("data00001.pac");
+                        pacs.Add("data00003.pac");
+                        pacs.Add("data.cpk");
+                        break;
+                    case "data_k.cpk":
+                        pacs.Add("data00005.pac");
+                        pacs.Add("data_k.cpk");
+                        break;
+                    case "data_c.cpk":
+                        pacs.Add("data00006.pac");
+                        pacs.Add("data_c.cpk");
+                        break;
+                }
+                return pacs;
+            });
+            setupTasks.Add(getPacs);
+
+            var getStartInfo = Task<ProcessStartInfo>.Run(() =>
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\Preappfile\preappfile.exe";
+                if (!File.Exists(startInfo.FileName))
+                {
+                    Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {startInfo.FileName}. Please check if it was blocked by your anti-virus.");
+                    throw new FileNotFoundException();
+                }
+                startInfo.CreateNoWindow = true;
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                startInfo.RedirectStandardOutput = true;
+                startInfo.UseShellExecute = false;
+                return startInfo;
+            });
+            setupTasks.Add(getStartInfo);
+            var validation = Task.WhenAll(setupTasks);
+            if(validation.IsFaulted) { return; }
+
             List<string> globs = new List<string> { "*[!0-9].bin", "*2[0-1][0-9].bin", "*.arc", "*.pac", "*.pack", "*.bf", "*.bmd", "*.pm1" };
-            switch (cpk)
-            {
-                case "data_e.cpk":
-                    pacs.Add("data00004.pac");
-                    pacs.Add("data_e.cpk");
-                    break;
-                case "data.cpk":
-                    pacs.Add("data00000.pac");
-                    pacs.Add("data00001.pac");
-                    pacs.Add("data00003.pac");
-                    pacs.Add("data.cpk");
-                    break;
-                case "data_k.cpk":
-                    pacs.Add("data00005.pac");
-                    pacs.Add("data_k.cpk");
-                    break;
-                case "data_c.cpk":
-                    pacs.Add("data00006.pac");
-                    pacs.Add("data_c.cpk");
-                    break;
-            }
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = true;
-            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\Preappfile\preappfile.exe";
-            if (!File.Exists(startInfo.FileName))
-            {
-                Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {startInfo.FileName}. Please check if it was blocked by your anti-virus.");
-                return;
-            }
+            var pacs = getPacs.Result;
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.RedirectStandardOutput = true;
-            startInfo.UseShellExecute = false;
+
+            var pacExtract = new List<Task>();
             foreach (var pac in pacs)
             {
-                Utilities.ParallelLogger.Log($"[INFO] Unpacking files for {pac}...");
-                foreach (var glob in globs)
+                pacExtract.Add(Task.Run(async () =>
                 {
-                    startInfo.Arguments = $@"-i ""{directory}\{pac}"" -o ""{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{Path.GetFileNameWithoutExtension(pac)}"" --unpack-filter {glob}";
-                    using (Process process = new Process())
+                    Utilities.ParallelLogger.Log($"[INFO] Unpacking files for {pac}...");
+                    var globExtract = new List<Task>();
+                    foreach (var glob in globs)
                     {
-                        process.StartInfo = startInfo;
-                        process.Start();
-                        while (!process.HasExited)
+                        globExtract.Add(Task.Run(() =>
                         {
-                            string text = process.StandardOutput.ReadLine();
-                            if (text != "" && text != null)
-                                Utilities.ParallelLogger.Log($"[INFO] {text}");
-                        }
+                            var startInfo = new ProcessStartInfo();
+                            startInfo = getStartInfo.Result;
+                            startInfo.Arguments = $@"-i ""{directory}\{pac}"" -o ""{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{Path.GetFileNameWithoutExtension(pac)}"" --unpack-filter {glob}";
+                            using (Process process = new Process())
+                            {
+                                process.StartInfo = startInfo;
+                                process.Start();
+                                while (!process.HasExited)
+                                {
+                                    string text = process.StandardOutput.ReadLine();
+                                    if (!String.IsNullOrEmpty(text))
+                                        Utilities.ParallelLogger.Log($"[INFO] {text}");
+                                }
+                            }
+                        }));
                     }
+                    await Task.WhenAll(globExtract);
+                    await ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{Path.GetFileNameWithoutExtension(pac)}");
+                }));
+            }
+            pacExtract.Add(Task.Run(() =>
+            {
+                if (File.Exists($@"{directory}\{cpk}") && !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{cpk}"))
+                {
+                    Utilities.ParallelLogger.Log($@"[INFO] Backing up {cpk}");
+                    File.Copy($@"{directory}\{cpk}", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{cpk}", true);
                 }
-                ExtractWantedFiles($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{Path.GetFileNameWithoutExtension(pac)}");
-            }
-            if (File.Exists($@"{directory}\{cpk}") && !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{cpk}"))
+            }));
+            pacExtract.Add(Task.Run(() =>
             {
-                Utilities.ParallelLogger.Log($@"[INFO] Backing up {cpk}");
-                File.Copy($@"{directory}\{cpk}", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\{cpk}", true);
-            }
-            if (File.Exists($@"{directory}\movie.cpk") && !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\movie.cpk"))
-            {
-                Utilities.ParallelLogger.Log($@"[INFO] Backing up movie.cpk");
-                File.Copy($@"{directory}\movie.cpk", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\movie.cpk", true);
-            }
+                if (File.Exists($@"{directory}\movie.cpk") && !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\movie.cpk"))
+                {
+                    Utilities.ParallelLogger.Log($@"[INFO] Backing up movie.cpk");
+                    File.Copy($@"{directory}\movie.cpk", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden\movie.cpk", true);
+                }
+            }));
+            await Task.WhenAll(pacExtract);
 
             Utilities.ParallelLogger.Log("[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
@@ -300,6 +422,8 @@ namespace AemulusModManager
 
         public static async Task UnpackP5CPK(string directory)
         {
+            var tasks = new List<Task>();
+
             if (!Directory.Exists(directory))
             {
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {directory}. Please correct the file path in config.");
@@ -310,31 +434,61 @@ namespace AemulusModManager
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            if (File.Exists($@"{directory}\ps3.cpk.66600") && File.Exists($@"{directory}\ps3.cpk.66601") && File.Exists($@"{directory}\ps3.cpk.66602")
+            tasks.Add(Task.Run(() =>
+            {
+                if (File.Exists($@"{directory}\ps3.cpk.66600") && File.Exists($@"{directory}\ps3.cpk.66601") && File.Exists($@"{directory}\ps3.cpk.66602")
                    && !File.Exists($@"{directory}\ps3.cpk"))
-            {
-                Console.Write("[INFO] Combining ps3.cpk parts");
-                ProcessStartInfo cmdInfo = new ProcessStartInfo();
-                cmdInfo.CreateNoWindow = true;
-                cmdInfo.FileName = @"CMD.exe";
-                cmdInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                cmdInfo.Arguments = $@"/C copy /b ""{directory}\ps3.cpk.66600"" + ""{directory}\ps3.cpk.66601"" + ""{directory}\ps3.cpk.66602"" ""{directory}\ps3.cpk""";
-
-                using (Process process = new Process())
                 {
-                    process.StartInfo = cmdInfo;
-                    process.Start();
-                    process.WaitForExit();
+                    Console.Write("[INFO] Combining ps3.cpk parts");
+                    ProcessStartInfo cmdInfo = new ProcessStartInfo();
+                    cmdInfo.CreateNoWindow = true;
+                    cmdInfo.FileName = @"CMD.exe";
+                    cmdInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    cmdInfo.Arguments = $@"/C copy /b ""{directory}\ps3.cpk.66600"" + ""{directory}\ps3.cpk.66601"" + ""{directory}\ps3.cpk.66602"" ""{directory}\ps3.cpk""";
+
+                    using (Process process = new Process())
+                    {
+                        process.StartInfo = cmdInfo;
+                        process.Start();
+                        process.WaitForExit();
+                    }
                 }
-            }
+            }));
 
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5";
-            Directory.CreateDirectory(pathToExtract);
-
-            if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data.csv") 
-                || !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps3.csv"))
+            var getPathToExtract = Task<string>.Run(() =>
             {
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV files used for unpacking in Dependencies\FilteredCpkCsv");
+                string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5";
+                Directory.CreateDirectory(pathToExtract);
+                return pathToExtract;
+            });
+            tasks.Add(getPathToExtract);
+
+            var dataFiles = Task<string[]>.Run(() =>
+            {
+                if(!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv: filtered_data.csv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data.csv");
+            });
+            tasks.Add(dataFiles);
+
+            var ps3Files = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps3.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv: filtered_ps3.csv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps3.csv");
+            });
+            tasks.Add(ps3Files);
+
+            var validation = Task.WhenAll(tasks);
+            await validation;
+            if (validation.IsFaulted)
+            {
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     Mouse.OverrideCursor = null;
@@ -342,22 +496,20 @@ namespace AemulusModManager
                 return;
             }
 
-            string[] dataFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data.csv");
-            string[] ps3Files = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps3.csv");
-
+            var pathToExtract = getPathToExtract.Result;
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
             if (File.Exists($@"{directory}\data.cpk"))
-                CriFsUnpack($@"{directory}\data.cpk", pathToExtract, dataFiles);
+                await CriFsUnpack($@"{directory}\data.cpk", pathToExtract, dataFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find data.cpk in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ps3.cpk");
             if (File.Exists($@"{directory}\ps3.cpk"))
-                CriFsUnpack($@"{directory}\ps3.cpk", pathToExtract, ps3Files);
+                await CriFsUnpack($@"{directory}\ps3.cpk", pathToExtract, ps3Files.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ps3.cpk in {directory}.");
 
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -366,42 +518,62 @@ namespace AemulusModManager
         }
         public static async Task UnpackP5RCPKs(string directory, string language, string version)
         {
+            var tasks = new List<Task>();
             if (!Directory.Exists(directory))
             {
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {directory}. Please correct the file path.");
                 return;
             }
+
+            var getPathToExtract = Task<string>.Run(() =>
+            {
+                string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Royal (PS4)";
+                Directory.CreateDirectory(pathToExtract);
+                return pathToExtract;
+            });
+            tasks.Add(getPathToExtract);
+
+            var dataRFiles = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_dataR.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv: filtered_dataR.csv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_dataR.csv");
+            });
+            tasks.Add(dataRFiles);
+
+            var ps4RFiles = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps4R.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv: filtered_ps4R.csv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps4R.csv");
+            });
+            tasks.Add(ps4RFiles);
+
+            var validation = Task.WhenAll(tasks);
+            await validation;
+            if (validation.IsFaulted) { return; }
+
+            var pathToExtract = getPathToExtract.Result;
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Royal (PS4)";
-            Directory.CreateDirectory(pathToExtract);
-
-            if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_dataR.csv")
-                || !File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps4R.csv"))
-            {
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV files used for unpacking in Dependencies\FilteredCpkCsv");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Mouse.OverrideCursor = null;
-                });
-                return;
-            }
-
-            string[] dataRFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_dataR.csv");
-            string[] ps4RFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_ps4R.csv");
-
             Utilities.ParallelLogger.Log($"[INFO] Extracting dataR.cpk");
             if (File.Exists($@"{directory}\dataR.cpk"))
-                CriFsUnpack($@"{directory}\dataR.cpk", pathToExtract, dataRFiles);
+                await CriFsUnpack($@"{directory}\dataR.cpk", pathToExtract, dataRFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find dataR.cpk in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ps4R.cpk");
             if (File.Exists($@"{directory}\ps4R.cpk"))
-                CriFsUnpack($@"{directory}\ps4R.cpk", pathToExtract, ps4RFiles);
+                await CriFsUnpack($@"{directory}\ps4R.cpk", pathToExtract, ps4RFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ps4R.cpk in {directory}.");
 
@@ -426,7 +598,7 @@ namespace AemulusModManager
                 }
                 Utilities.ParallelLogger.Log($"[INFO] Extracting {localizedCpk}");
                 if (File.Exists($@"{directory}\{localizedCpk}"))
-                    CriFsUnpack($@"{directory}\{localizedCpk}", pathToExtract, dataRLocalizedFiles);
+                    await CriFsUnpack($@"{directory}\{localizedCpk}", pathToExtract, dataRLocalizedFiles);
                 else
                     Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {localizedCpk} in {directory}.");
             }
@@ -437,7 +609,7 @@ namespace AemulusModManager
                 string[] patch2RFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_patch2R.csv");
                 Utilities.ParallelLogger.Log($"[INFO] Extracting patch2R.cpk");
                 if (File.Exists($@"{directory}\patch2R.cpk"))
-                    CriFsUnpack($@"{directory}\patch2R.cpk", pathToExtract, patch2RFiles);
+                    await CriFsUnpack($@"{directory}\patch2R.cpk", pathToExtract, patch2RFiles);
                 else
                     Utilities.ParallelLogger.Log($"[ERROR] Couldn't find patch2R.cpk in {directory}.");
                 if (language != "English")
@@ -461,13 +633,13 @@ namespace AemulusModManager
                     string[] patch2RLocalizedFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_patch2R{patchSuffix}.csv");
                     Utilities.ParallelLogger.Log($"[INFO] Extracting patch2R{patchSuffix}.cpk");
                     if (File.Exists($@"{directory}\patch2R{patchSuffix}.cpk"))
-                        CriFsUnpack($@"{directory}\patch2R{patchSuffix}.cpk", pathToExtract, patch2RLocalizedFiles);
+                        await CriFsUnpack($@"{directory}\patch2R{patchSuffix}.cpk", pathToExtract, patch2RLocalizedFiles);
                     else
                         Utilities.ParallelLogger.Log($"[ERROR] Couldn't find patch2R{patchSuffix}.cpk in {directory}.");
                 }
             }
 
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -491,17 +663,17 @@ namespace AemulusModManager
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting PATCH1.CPK");
             if (File.Exists($@"{directory}\PATCH1.CPK"))
-                CriFsUnpack($@"{directory}\PATCH1.CPK", pathToExtract);
+                await CriFsUnpack($@"{directory}\PATCH1.CPK", pathToExtract);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find PATCH1.CPK in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ALL_USEU.CPK (This will take awhile)");
             if (File.Exists($@"{directory}\ALL_USEU.CPK"))
-                CriFsUnpack($@"{directory}\ALL_USEU.CPK", pathToExtract);
+                await CriFsUnpack($@"{directory}\ALL_USEU.CPK", pathToExtract);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ALL_USEU.CPK in {directory}.");
 
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -511,36 +683,49 @@ namespace AemulusModManager
 
         public static async Task UnpackP4GCPK(string cpk)
         {
-            if (!File.Exists(cpk))
+            var tasks = new List<Task>();
+
+            tasks.Add(Task.Run(() =>
             {
-                Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
-                return;
-            }
+                if (!File.Exists(cpk))
+                {
+                    Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
+                    throw new FileNotFoundException();
+                }
+            }));
+
+            var pathToExtract = Task<string>.Run(() =>
+            {
+                string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden (Vita)";
+                Directory.CreateDirectory(pathToExtract);
+                return pathToExtract;
+            });
+            tasks.Add(pathToExtract);
+
+            var dataFiles = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_p4gdata.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_p4gdata.csv");
+            });
+            tasks.Add(dataFiles);
+            var validation = Task.WhenAll(tasks);
+            await validation;
+            if(validation.IsFaulted) { return; }
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden (Vita)";
-            Directory.CreateDirectory(pathToExtract);
-
-            if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_p4gdata.csv"))
-            {
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Mouse.OverrideCursor = null;
-                });
-                return;
-            }
-
-            string[] dataFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_p4gdata.csv");
-
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            CriFsUnpack(cpk, pathToExtract, dataFiles);
+            await CriFsUnpack(cpk, pathToExtract.Result, dataFiles.Result);
 
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract.Result);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -549,36 +734,50 @@ namespace AemulusModManager
         }
         public static async Task UnpackPQ2CPK(string cpk)
         {
-            if (!File.Exists(cpk))
+            var validationTasks = new List<Task>();
+            validationTasks.Add(Task.Run(() =>
             {
-                Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
-                return;
-            }
+                if (!File.Exists(cpk))
+                {
+                    Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
+                    throw new FileNotFoundException();
+                }
+            }));
+
+            var getPathToExtract = Task<string>.Run(() =>
+            {
+                var _pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona Q2";
+                Directory.CreateDirectory(_pathToExtract);
+                return _pathToExtract;
+            });
+            validationTasks.Add(getPathToExtract);
+
+            var getDataFiles = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq2.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq2.csv");
+            });
+            validationTasks.Add(getDataFiles);
+            var validation = Task.WhenAll(validationTasks);
+            await validation;
+            if (validation.IsFaulted) { return; }
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona Q2";
-            Directory.CreateDirectory(pathToExtract);
-
-            if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq2.csv"))
-            {
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Mouse.OverrideCursor = null;
-                });
-                return;
-            }
-
-            string[] dataFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq2.csv");
-
+            string pathToExtract = getPathToExtract.Result;
+            string[] dataFiles = getDataFiles.Result;
+            
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            CriFsUnpack(cpk, pathToExtract, dataFiles);
-
+            await CriFsUnpack(cpk, pathToExtract, dataFiles);
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -587,43 +786,56 @@ namespace AemulusModManager
         }
         public static async Task UnpackPQCPK(string cpk)
         {
-            if (!File.Exists(cpk))
+            var validationTasks = new List<Task>();
+            validationTasks.Add(Task.Run(() =>
             {
-                Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
-                return;
-            }
+                if (!File.Exists(cpk))
+                {
+                    Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {cpk}. Please correct the file path.");
+                    throw new FileNotFoundException();
+                }
+            }));
+
+            var getPathToExtract = Task<string>.Run(() =>
+            {
+                var _pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona Q";
+                Directory.CreateDirectory(_pathToExtract);
+                return _pathToExtract;
+            });
+            validationTasks.Add(getPathToExtract);
+
+            var getDataFiles = Task<string[]>.Run(() =>
+            {
+                if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq.csv"))
+                {
+                    Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
+                    throw new FileNotFoundException();
+                }
+                return File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq.csv");
+            });
+            validationTasks.Add(getDataFiles);
+            var validation = Task.WhenAll(validationTasks);
+            validation.Wait();
+            if (validation.IsFaulted) { return; }
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = Cursors.Wait;
             });
 
-            string pathToExtract = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona Q";
-            Directory.CreateDirectory(pathToExtract);
-
-            if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq.csv"))
-            {
-                Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find CSV file used for unpacking in Dependencies\FilteredCpkCsv");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Mouse.OverrideCursor = null;
-                });
-                return;
-            }
-
-            string[] dataFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_data_pq.csv");
-
+            string pathToExtract = getPathToExtract.Result;
+            string[] dataFiles = getDataFiles.Result;
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            CriFsUnpack(cpk, pathToExtract, dataFiles);
-
+            await CriFsUnpack(cpk, pathToExtract, dataFiles);
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
-            ExtractWantedFiles(pathToExtract);
+            await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Mouse.OverrideCursor = null;
             });
         }
-        private static void CriFsUnpack(string cpk, string dir, string[] fileList = null)
+        private static async Task CriFsUnpack(string cpk, string dir, string[] fileList = null)
         {
             using var fileStream = new FileStream(cpk, FileMode.Open);
             using var reader = CriFsLib.Instance.CreateCpkReader(fileStream, true);
@@ -632,21 +844,25 @@ namespace AemulusModManager
 
             bool extractAll = fileList == null;
             using var extractor = CriFsLib.Instance.CreateBatchExtractor<FileToExtract>(cpk, P5RCrypto.DecryptionFunction);
+            var tasks = new List<Task>();
             for (int x = 0; x < files.Length; x++)
             {
-                string filePath = string.IsNullOrEmpty(files[x].Directory) ? files[x].FileName : $@"{files[x].Directory}/{files[x].FileName}";
-
-                if (extractAll || fileList.Contains(filePath))
+                tasks.Add(Task.Run(() =>
                 {
-                    extractor.QueueItem(new FileToExtract(Path.Combine(dir, filePath), files[x]));
-                    Utilities.ParallelLogger.Log($@"[INFO] Extracting {filePath}");
-                }
-            }
+                    string filePath = string.IsNullOrEmpty(files[x].Directory) ? files[x].FileName : $@"{files[x].Directory}/{files[x].FileName}";
 
-            extractor.WaitForCompletion();
+                    if (extractAll || fileList.Contains(filePath))
+                    {
+                        extractor.QueueItem(new FileToExtract(Path.Combine(dir, filePath), files[x]));
+                        Utilities.ParallelLogger.Log($@"[INFO] Extracting {filePath}");
+                    }
+                }));
+            }
+            await Task.WhenAll(tasks);
+            await extractor.WaitForCompletionAsync();
             ArrayRental.Reset();
         }
-        private static async void ExtractWantedFiles(string directory)
+        private static async Task ExtractWantedFiles(string directory)
         {
             if (!Directory.Exists(directory))
                 return;
@@ -657,18 +873,18 @@ namespace AemulusModManager
             {
                 extractionTasks.Add(Task.Run(() =>
                 {
-                List<string> contents = binMerge.getFileContents(file).Select(x => x.ToLower()).ToList();
-                // Check if there are any files we want (or files that could have files we want) and unpack them if so
+                    List<string> contents = binMerge.getFileContents(file).Select(x => x.ToLower()).ToList();
+                    // Check if there are any files we want (or files that could have files we want) and unpack them if so
                     bool containersFound = contents.Exists(x => pakExtensions.Contains(Path.GetExtension(x).ToLower()));
                     if(contents.Exists(x => wantedFileExtensions.Contains(Path.GetExtension(x).ToLower()) || containersFound))
-                {
-                    Utilities.ParallelLogger.Log($"[INFO] Unpacking {file}");
-                    binMerge.PAKPackCMD($"unpack \"{file}\"");
+                    {
+                        Utilities.ParallelLogger.Log($"[INFO] Unpacking {file}");
+                        binMerge.PAKPackCMD($"unpack \"{file}\"");
 
-                    // Search the location of the unpacked container for wanted files
-                    if (containersFound)
-                        ExtractWantedFiles(Path.Combine(Path.GetDirectoryName(file),Path.GetFileNameWithoutExtension(file)));
-                }
+                        // Search the location of the unpacked container for wanted files
+                        if (containersFound)
+                            extractionTasks.Add(ExtractWantedFiles(Path.Combine(Path.GetDirectoryName(file),Path.GetFileNameWithoutExtension(file))));
+                    }
                 }));
             }
             await Task.WhenAll(extractionTasks);
