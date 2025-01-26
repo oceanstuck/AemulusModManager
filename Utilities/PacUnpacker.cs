@@ -20,6 +20,9 @@ namespace AemulusModManager
 {
     public static class PacUnpacker
     {
+        private static string[] pakExtensions = { ".pak", ".pac", ".pack", ".bin", ".abin", ".tpc", ".fpc", ".gsd", ".arc" };
+        private static string[] wantedFileExtensions = { ".bf", ".bmd", ".pm1", ".acb", ".awb", ".ctd", ".ftd", ".dat", ".spd", ".gtx" };
+
         internal class FileToExtract : IBatchFileExtractorItem
         {
             public string FullPath { get; set; }
@@ -643,20 +646,21 @@ namespace AemulusModManager
             extractor.WaitForCompletion();
             ArrayRental.Reset();
         }
-        private static void ExtractWantedFiles(string directory)
+        private static async void ExtractWantedFiles(string directory)
         {
             if (!Directory.Exists(directory))
                 return;
 
-            var files = Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).
-                Where(s => s.ToLower().EndsWith(".arc") || s.ToLower().EndsWith(".bin") || s.ToLower().EndsWith(".pac") || s.ToLower().EndsWith(".pak") || s.ToLower().EndsWith(".abin")
-                || s.ToLower().EndsWith(".gsd") || s.ToLower().EndsWith(".tpc"));
+            var files = Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories).Where(s => pakExtensions.Contains(Path.GetExtension(s).ToLower()));
+            var extractionTasks = new List<Task>();
             foreach(string file in files)
             {
+                extractionTasks.Add(Task.Run(() =>
+                {
                 List<string> contents = binMerge.getFileContents(file).Select(x => x.ToLower()).ToList();
                 // Check if there are any files we want (or files that could have files we want) and unpack them if so
-                bool containersFound = contents.Exists(x => x.ToLower().EndsWith(".bin") || x.ToLower().EndsWith(".pac") || x.ToLower().EndsWith(".pak") || x.ToLower().EndsWith(".abin") || x.ToLower().EndsWith(".arc"));
-                if(contents.Exists(x => x.ToLower().EndsWith(".bf") || x.ToLower().EndsWith(".bmd") || x.ToLower().EndsWith(".pm1") || x.ToLower().EndsWith(".dat") || x.ToLower().EndsWith(".ctd") || x.ToLower().EndsWith(".ftd") || x.ToLower().EndsWith(".spd") || x.ToLower().EndsWith(".acb") || x.ToLower().EndsWith(".awb") || containersFound))
+                    bool containersFound = contents.Exists(x => pakExtensions.Contains(Path.GetExtension(x).ToLower()));
+                    if(contents.Exists(x => wantedFileExtensions.Contains(Path.GetExtension(x).ToLower()) || containersFound))
                 {
                     Utilities.ParallelLogger.Log($"[INFO] Unpacking {file}");
                     binMerge.PAKPackCMD($"unpack \"{file}\"");
@@ -665,8 +669,9 @@ namespace AemulusModManager
                     if (containersFound)
                         ExtractWantedFiles(Path.Combine(Path.GetDirectoryName(file),Path.GetFileNameWithoutExtension(file)));
                 }
+                }));
             }
-
+            await Task.WhenAll(extractionTasks);
         }
 
         public static IEnumerable<IEnumerable<T>> Split<T>(this T[] array, int size)
