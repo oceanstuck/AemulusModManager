@@ -40,7 +40,8 @@ namespace AemulusModManager.Utilities.KT
 
         public static async Task Backup(string modPath)
         {
-            Directory.CreateDirectory($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data");
+            var backupPath = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/Persona 5 Strikers/motor_rsc";
+            Directory.CreateDirectory($@"{backupPath}/data");
 
             var backupTasks = new List<Task>();
             foreach (var file in original_data)
@@ -49,7 +50,7 @@ namespace AemulusModManager.Utilities.KT
                 {
                     ParallelLogger.Log($@"[INFO] Backing up {modPath}\data\{file}");
                     if (File.Exists($@"{modPath}\data\{file}"))
-                        File.Copy($@"{modPath}\data\{file}", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}", true);
+                        File.Copy($@"{modPath}/data/{file}", $@"{backupPath}/data/{file}", true);
                     else
                         ParallelLogger.Log($@"[ERROR] Couldn't find {modPath}\data\{file}");
                 }));
@@ -59,7 +60,7 @@ namespace AemulusModManager.Utilities.KT
                 backupTasks.Add(Task.Run(() =>
                 {
                     ParallelLogger.Log($"[INFO] Backing up {rdb}");
-                    File.Copy(rdb, $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\{Path.GetFileName(rdb)}", true);
+                    File.Copy(rdb, $@"{backupPath}/{Path.GetFileName(rdb)}", true);
                 }));
             }
             await Task.WhenAll(backupTasks);

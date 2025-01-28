@@ -279,7 +279,7 @@ namespace AemulusModManager
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting files from umd0.cpk");
             if (File.Exists(umd0Path))
-                await CriFsUnpack(umd0Path, pathToExtract.Result, umd0Files.Result);
+                CriFsUnpack(umd0Path, pathToExtract.Result, umd0Files.Result);
             else
                 Utilities.ParallelLogger.Log($@"[ERROR] Couldn't find {umd0Path}.");
 
@@ -499,13 +499,13 @@ namespace AemulusModManager
             var pathToExtract = getPathToExtract.Result;
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
             if (File.Exists($@"{directory}\data.cpk"))
-                await CriFsUnpack($@"{directory}\data.cpk", pathToExtract, dataFiles.Result);
+                CriFsUnpack($@"{directory}\data.cpk", pathToExtract, dataFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find data.cpk in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ps3.cpk");
             if (File.Exists($@"{directory}\ps3.cpk"))
-                await CriFsUnpack($@"{directory}\ps3.cpk", pathToExtract, ps3Files.Result);
+                CriFsUnpack($@"{directory}\ps3.cpk", pathToExtract, ps3Files.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ps3.cpk in {directory}.");
 
@@ -567,13 +567,13 @@ namespace AemulusModManager
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting dataR.cpk");
             if (File.Exists($@"{directory}\dataR.cpk"))
-                await CriFsUnpack($@"{directory}\dataR.cpk", pathToExtract, dataRFiles.Result);
+                CriFsUnpack($@"{directory}\dataR.cpk", pathToExtract, dataRFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find dataR.cpk in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ps4R.cpk");
             if (File.Exists($@"{directory}\ps4R.cpk"))
-                await CriFsUnpack($@"{directory}\ps4R.cpk", pathToExtract, ps4RFiles.Result);
+                CriFsUnpack($@"{directory}\ps4R.cpk", pathToExtract, ps4RFiles.Result);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ps4R.cpk in {directory}.");
 
@@ -598,7 +598,7 @@ namespace AemulusModManager
                 }
                 Utilities.ParallelLogger.Log($"[INFO] Extracting {localizedCpk}");
                 if (File.Exists($@"{directory}\{localizedCpk}"))
-                    await CriFsUnpack($@"{directory}\{localizedCpk}", pathToExtract, dataRLocalizedFiles);
+                    CriFsUnpack($@"{directory}\{localizedCpk}", pathToExtract, dataRLocalizedFiles);
                 else
                     Utilities.ParallelLogger.Log($"[ERROR] Couldn't find {localizedCpk} in {directory}.");
             }
@@ -609,7 +609,7 @@ namespace AemulusModManager
                 string[] patch2RFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_patch2R.csv");
                 Utilities.ParallelLogger.Log($"[INFO] Extracting patch2R.cpk");
                 if (File.Exists($@"{directory}\patch2R.cpk"))
-                    await CriFsUnpack($@"{directory}\patch2R.cpk", pathToExtract, patch2RFiles);
+                    CriFsUnpack($@"{directory}\patch2R.cpk", pathToExtract, patch2RFiles);
                 else
                     Utilities.ParallelLogger.Log($"[ERROR] Couldn't find patch2R.cpk in {directory}.");
                 if (language != "English")
@@ -633,7 +633,7 @@ namespace AemulusModManager
                     string[] patch2RLocalizedFiles = File.ReadAllLines($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\FilteredCpkCsv\filtered_patch2R{patchSuffix}.csv");
                     Utilities.ParallelLogger.Log($"[INFO] Extracting patch2R{patchSuffix}.cpk");
                     if (File.Exists($@"{directory}\patch2R{patchSuffix}.cpk"))
-                        await CriFsUnpack($@"{directory}\patch2R{patchSuffix}.cpk", pathToExtract, patch2RLocalizedFiles);
+                        CriFsUnpack($@"{directory}\patch2R{patchSuffix}.cpk", pathToExtract, patch2RLocalizedFiles);
                     else
                         Utilities.ParallelLogger.Log($"[ERROR] Couldn't find patch2R{patchSuffix}.cpk in {directory}.");
                 }
@@ -663,13 +663,13 @@ namespace AemulusModManager
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting PATCH1.CPK");
             if (File.Exists($@"{directory}\PATCH1.CPK"))
-                await CriFsUnpack($@"{directory}\PATCH1.CPK", pathToExtract);
+                CriFsUnpack($@"{directory}\PATCH1.CPK", pathToExtract);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find PATCH1.CPK in {directory}.");
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting ALL_USEU.CPK (This will take awhile)");
             if (File.Exists($@"{directory}\ALL_USEU.CPK"))
-                await CriFsUnpack($@"{directory}\ALL_USEU.CPK", pathToExtract);
+                CriFsUnpack($@"{directory}\ALL_USEU.CPK", pathToExtract);
             else
                 Utilities.ParallelLogger.Log($"[ERROR] Couldn't find ALL_USEU.CPK in {directory}.");
 
@@ -722,7 +722,7 @@ namespace AemulusModManager
             });
 
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            await CriFsUnpack(cpk, pathToExtract.Result, dataFiles.Result);
+            CriFsUnpack(cpk, pathToExtract.Result, dataFiles.Result);
 
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
             await ExtractWantedFiles(pathToExtract.Result);
@@ -775,7 +775,7 @@ namespace AemulusModManager
             string[] dataFiles = getDataFiles.Result;
             
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            await CriFsUnpack(cpk, pathToExtract, dataFiles);
+            CriFsUnpack(cpk, pathToExtract, dataFiles);
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
             await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
@@ -826,7 +826,7 @@ namespace AemulusModManager
             string pathToExtract = getPathToExtract.Result;
             string[] dataFiles = getDataFiles.Result;
             Utilities.ParallelLogger.Log($"[INFO] Extracting data.cpk");
-            await CriFsUnpack(cpk, pathToExtract, dataFiles);
+            CriFsUnpack(cpk, pathToExtract, dataFiles);
             Utilities.ParallelLogger.Log("[INFO] Unpacking extracted files");
             await ExtractWantedFiles(pathToExtract);
             Utilities.ParallelLogger.Log($"[INFO] Finished unpacking base files!");
@@ -835,7 +835,7 @@ namespace AemulusModManager
                 Mouse.OverrideCursor = null;
             });
         }
-        private static async Task CriFsUnpack(string cpk, string dir, string[] fileList = null)
+        private static void CriFsUnpack(string cpk, string dir, string[] fileList = null)
         {
             using var fileStream = new FileStream(cpk, FileMode.Open);
             using var reader = CriFsLib.Instance.CreateCpkReader(fileStream, true);
@@ -844,22 +844,16 @@ namespace AemulusModManager
 
             bool extractAll = fileList == null;
             using var extractor = CriFsLib.Instance.CreateBatchExtractor<FileToExtract>(cpk, P5RCrypto.DecryptionFunction);
-            var tasks = new List<Task>();
             for (int x = 0; x < files.Length; x++)
             {
-                tasks.Add(Task.Run(() =>
+                string filePath = string.IsNullOrEmpty(files[x].Directory) ? files[x].FileName : $@"{files[x].Directory}/{files[x].FileName}";
+                if (extractAll || fileList.Contains(filePath))
                 {
-                    string filePath = string.IsNullOrEmpty(files[x].Directory) ? files[x].FileName : $@"{files[x].Directory}/{files[x].FileName}";
-
-                    if (extractAll || fileList.Contains(filePath))
-                    {
-                        extractor.QueueItem(new FileToExtract(Path.Combine(dir, filePath), files[x]));
-                        Utilities.ParallelLogger.Log($@"[INFO] Extracting {filePath}");
-                    }
-                }));
+                    extractor.QueueItem(new FileToExtract(Path.Combine(dir, filePath), files[x]));
+                    Utilities.ParallelLogger.Log($@"[INFO] Extracting {filePath}");
+                }
             }
-            await Task.WhenAll(tasks);
-            await extractor.WaitForCompletionAsync();
+            extractor.WaitForCompletion();
             ArrayRental.Reset();
         }
         private static async Task ExtractWantedFiles(string directory)

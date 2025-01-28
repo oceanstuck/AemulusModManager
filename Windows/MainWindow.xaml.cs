@@ -2566,7 +2566,7 @@ namespace AemulusModManager
                         BmdMerger.Merge(packages, game, language);
                         PM1Merger.Merge(packages, game, language);
 
-                        await Task.Run(() =>
+                        await Task.Run(async () =>
                         {
                             string cheats = null;
                             string cheatsWS = null;
@@ -2579,7 +2579,7 @@ namespace AemulusModManager
                             if (game == "Persona 3 FES" || game == "Persona 3 Portable")
                                 textures = config.p3fConfig.texturesPath;
                             binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
-                            AwbMerger.Merge(packages, game, path);
+                            await AwbMerger.Merge(packages, game, path);
                             binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
                             // Patch files before merging
                             if (packages.Exists(x => Directory.Exists($@"{x}\binarypatches")))

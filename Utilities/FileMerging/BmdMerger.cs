@@ -20,14 +20,20 @@ namespace AemulusModManager.Utilities.FileMerging
                 string[] bmdFiles = Directory.GetFiles(dir, "*.bmd", SearchOption.AllDirectories);
                 foreach (string file in bmdFiles)
                 {
-                    string filePath = Utils.GetRelativePath(file, dir, game);
+                    string filePath = Path.GetRelativePath(dir, file);
+                    var dataFolder = String.Empty;
+                    if (game == "Persona 4 Golden")
+                    {
+                        dataFolder = filePath.Substring(0, filePath.IndexOf(Path.DirectorySeparatorChar));
+                        filePath = filePath.Substring(filePath.IndexOf(Path.DirectorySeparatorChar) + 1);
+                    }
                     string[] previousFileArr = foundBmds.FindLast(p => p[0] == filePath);
                     string previousFile = previousFileArr == null ? null : previousFileArr[2];
                     // Merge bmds if there are two
                     if (previousFile != null)
                     {
                         // Get the path of the file in original
-                        string ogPath = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\{game}\{Utils.GetRelativePath(file, dir, game, false)}";
+                        string ogPath = Path.Combine($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}", dataFolder, filePath);
                         MergeBmds(new string[] { previousFile, file }, ogPath, game, language);
                     }
                     string[] foundBmd = { filePath, dir, file };

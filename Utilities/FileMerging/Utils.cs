@@ -192,16 +192,6 @@ namespace AemulusModManager.Utilities.FileMerging
             //file is not locked
             return false;
         }
-        // Gets the path for a file relative to the game's file system
-        // e.g. field/script/...
-        public static string GetRelativePath(string file, string dir, string game, bool removeData = true)
-        {
-            List<string> folders = new List<string>(file.Split(char.Parse("\\")));
-            int idx = folders.IndexOf(Path.GetFileName(dir)) + 1;
-            if (game == "Persona 4 Golden" && removeData) idx++; // Account for varying data folder names
-            folders = folders.Skip(idx).ToList();
-            return string.Join("\\", folders.ToArray());
-        }
 
         public static void RunCommand(string file, string args)
         {

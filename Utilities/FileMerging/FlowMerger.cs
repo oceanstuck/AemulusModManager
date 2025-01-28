@@ -24,7 +24,13 @@ namespace AemulusModManager.Utilities.FileMerging
                 foreach (string file in flowFiles)
                 {
                     string bf = Path.ChangeExtension(file, "bf");
-                    string filePath = Utils.GetRelativePath(bf, dir, game);
+                    string filePath = Path.GetRelativePath(dir, bf);
+                    var dataFolder = String.Empty;
+                    if (game == "Persona 4 Golden")
+                    {
+                        dataFolder = filePath.Substring(0, filePath.IndexOf(Path.DirectorySeparatorChar));
+                        filePath = filePath.Substring(filePath.IndexOf(Path.DirectorySeparatorChar) + 1);
+                    }
                     // If the current file is a bf check if it has a corresponding flow
                     if (file.Equals(bf, StringComparison.InvariantCultureIgnoreCase))
                     {
@@ -52,7 +58,7 @@ namespace AemulusModManager.Utilities.FileMerging
                     else
                     {
                         // Get the path of the file in original
-                        string ogPath = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\{game}\{Utils.GetRelativePath(bf, dir, game, false)}";
+                        string ogPath = Path.Combine($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}", dataFolder, filePath);
 
                         if (AemIgnore != null && AemIgnore.Any(file.Contains))
                         {
