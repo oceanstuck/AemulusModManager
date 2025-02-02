@@ -2463,9 +2463,9 @@ namespace AemulusModManager
                         textures = config.p3fConfig.texturesPath;
 
                     if (game == "Persona Q2" || game == "Persona Q")
-                        binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS, true);
+                        await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS, true);
                     else if (game != "Persona 5 Strikers")
-                        binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
+                        await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
                     else
                         Merger.Restart(path);
                     Utilities.ParallelLogger.Log("[INFO] Finished emptying output folder!");
@@ -2578,15 +2578,15 @@ namespace AemulusModManager
                             string textures = null;
                             if (game == "Persona 3 FES" || game == "Persona 3 Portable")
                                 textures = config.p3fConfig.texturesPath;
-                            binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
+                            await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
                             await AwbMerger.Merge(packages, game, path);
-                            binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
+                            await binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
                             // Patch files before merging
                             if (packages.Exists(x => Directory.Exists($@"{x}\binarypatches")))
                                 BinaryPatcher.Patch(packages, path, useCpk, cpkLang, game);
                             if (packages.Exists(x => Directory.Exists($@"{x}\spdpatches")))
                                 SpdPatcher.Patch(packages, path, useCpk, cpkLang, game);
-                            binMerge.Merge(path, game);
+                            await binMerge.Merge(path, game);
                         });
                         // Only run if tblpatches exists
                         if (packages.Exists(x => Directory.Exists($@"{x}\tblpatches")))
@@ -2617,28 +2617,28 @@ namespace AemulusModManager
                         if (game == "Persona 3 FES" && packages.Exists(x => Directory.Exists($@"{x}\cheats")))
                         {
                             if (config.p3fConfig.cheatsPath != null && Directory.Exists(config.p3fConfig.cheatsPath))
-                                binMerge.LoadCheats(packages, config.p3fConfig.cheatsPath);
+                                await binMerge.LoadCheats(packages, config.p3fConfig.cheatsPath);
                             else
                                 Utilities.ParallelLogger.Log($"[ERROR] Please set up Cheats Path in config to copy over cheats");
                         }
                         if (game == "Persona 3 FES" && packages.Exists(x => Directory.Exists($@"{x}\cheats_ws")))
                         {
                             if (config.p3fConfig.cheatsWSPath != null && Directory.Exists(config.p3fConfig.cheatsWSPath))
-                                binMerge.LoadCheatsWS(packages, config.p3fConfig.cheatsWSPath);
+                                await binMerge.LoadCheatsWS(packages, config.p3fConfig.cheatsWSPath);
                             else
                                 Utilities.ParallelLogger.Log($"[ERROR] Please set up Cheats WS Path in config to copy over cheats_ws");
                         }
                         if (game == "Persona 3 FES" && packages.Exists(x => Directory.Exists($@"{x}\texture_override")))
                         {
                             if (config.p3fConfig.texturesPath != null && Directory.Exists(config.p3fConfig.texturesPath))
-                                binMerge.LoadTextures(packages, config.p3fConfig.texturesPath);
+                                await binMerge.LoadTextures(packages, config.p3fConfig.texturesPath);
                             else
                                 Utilities.ParallelLogger.Log($"[ERROR] Please set up Textures Path in config to copy over textures");
                         }
                         if (game == "Persona 3 Portable" && packages.Exists(x => Directory.Exists($@"{x}\texture_override")))
                         {
                             if (config.p3pConfig.texturesPath != null && Directory.Exists(config.p3pConfig.texturesPath))
-                                binMerge.LoadTextures(packages, config.p3pConfig.texturesPath);
+                                await binMerge.LoadTextures(packages, config.p3pConfig.texturesPath);
                             else
                                 Utilities.ParallelLogger.Log($"[ERROR] Please set up Textures Path in config to copy over textures");
                         }
@@ -2646,7 +2646,7 @@ namespace AemulusModManager
                         // Unlike other ones we always want to "Load FMVS" for P3P so ones that should be deleted will be
                         if (game == "Persona 3 Portable")
                         {
-                            binMerge.LoadFMVs(packages, config.p3pConfig.modDir);
+                            await binMerge.LoadFMVs(packages, config.p3pConfig.modDir);
                         }
 
                         if (game == "Persona 3 Portable" && packages.Exists(x => Directory.Exists($@"{x}\cheats")))
@@ -2663,7 +2663,7 @@ namespace AemulusModManager
                                     if (cheatIni != null)
                                     {
                                         config.p3pConfig.cheatsPath = cheatIni.FullName;
-                                        binMerge.LoadP3PCheats(packages, config.p3pConfig.cheatsPath);
+                                        await binMerge.LoadP3PCheats(packages, config.p3pConfig.cheatsPath);
                                     }
                                     else
                                     {
@@ -2673,7 +2673,7 @@ namespace AemulusModManager
                             }
                             else
                             {
-                                binMerge.LoadP3PCheats(packages, config.p3pConfig.cheatsPath);
+                                await binMerge.LoadP3PCheats(packages, config.p3pConfig.cheatsPath);
                             }
                         }
 
@@ -2702,22 +2702,19 @@ namespace AemulusModManager
                     }
                     else if (game == "Persona 1 (PSP)")
                     {
-                        await Task.Run(() =>
+                        await Task.Run(async () =>
                         {
                             
                             string cheats = null;
                             string cheatsWS = null;
                             string textures = config.p3fConfig.texturesPath;
-                            binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
-                            binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
+                            await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
+                            await binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
                             var directory = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 1 (PSP)";
                             Utilities.ParallelLogger.Log($"[INFO] Adding unchanged files...");
                             foreach (var file in Directory.GetFiles(directory, "*.*", SearchOption.AllDirectories))
                             {
-                                List<string> folders = new List<string>(file.Split(char.Parse("\\")));
-                                int idx = folders.IndexOf(Path.GetFileName(directory));
-                                folders = folders.Skip(idx + 1).ToList();
-                                string binPath = $@"{modPath}\Persona 1 (PSP)\{string.Join("\\", folders.ToArray())}";
+                                string binPath = Path.Combine(modPath, "Persona 1 (PSP)", Path.GetRelativePath(directory, file));
                                 Directory.CreateDirectory(Path.GetDirectoryName(binPath));
                                 if (!File.Exists(binPath))
                                     File.Copy(file, binPath, false);
@@ -2743,7 +2740,7 @@ namespace AemulusModManager
                                     if (cheatIni != null)
                                     {
                                         config.p3pConfig.cheatsPath = cheatIni.FullName;
-                                        binMerge.LoadP1PSPCheats(packages, config.p3pConfig.cheatsPath);
+                                        await binMerge.LoadP1PSPCheats(packages, config.p3pConfig.cheatsPath);
                                     }
                                     else
                                     {
@@ -2753,13 +2750,13 @@ namespace AemulusModManager
                             }
                             else
                             {
-                                binMerge.LoadP1PSPCheats(packages, config.p3pConfig.cheatsPath);
+                                await binMerge.LoadP1PSPCheats(packages, config.p3pConfig.cheatsPath);
                             }
                         }
                         if (packages.Exists(x => Directory.Exists($@"{x}\texture_override")))
                         {
                             if (config.p1pspConfig.texturesPath != null && Directory.Exists(config.p1pspConfig.texturesPath))
-                                binMerge.LoadTextures(packages, config.p1pspConfig.texturesPath);
+                                await binMerge.LoadTextures(packages, config.p1pspConfig.texturesPath);
                             else
                                 Utilities.ParallelLogger.Log($"[ERROR] Please set up Textures Path in config to copy over textures");
                         }

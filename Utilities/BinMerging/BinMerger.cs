@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using AemulusModManager.Utilities;
 using AemulusModManager.Utilities.AwbMerging;
 using AemulusModManager.Utilities.FileMerging;
@@ -111,9 +112,9 @@ namespace AemulusModManager
                 Directory.Delete(path, true);
             }
             catch (Exception ex)
-                {
+            {
                 Utilities.ParallelLogger.Log("[ERROR] An error occurred: " + ex.Message);
-                    }
+            }
 
         }
 
@@ -159,7 +160,7 @@ namespace AemulusModManager
                         File.WriteAllBytes($@"{spdFolder}\{spdKey.id}.spdspr", spdKey.file);
                     }
                 }
-                else if (Path.GetExtension(file) == ".spr" && game != "Persona Q2")
+                else if (Path.GetExtension(file) == ".spr" && game != "Persona Q" && game != "Persona Q2")
                 {
                     Utilities.ParallelLogger.Log($@"[INFO] Unpacking {file}...");
                     string sprFolder = Path.ChangeExtension(file, null);
@@ -175,7 +176,7 @@ namespace AemulusModManager
         }
         }
 
-        public static void CopyAndUnpackBins(List<string> ModList, string modDir, bool useCpk, string cpkLang, string game)
+        public static async Task CopyAndUnpackBins(List<string> ModList, string modDir, bool useCpk, string cpkLang, string game)
         {
             if (!File.Exists(exePath))
             {
@@ -227,26 +228,31 @@ namespace AemulusModManager
                 }
 
                 List<string> modsAem = ReadModsAem(mod);
-
+                var fileTasks = new List<Task>();
                 string[] AemIgnore = File.Exists($@"{mod}/Ignore.aem") ? File.ReadAllLines($@"{mod}/Ignore.aem") : null;
                 // Copy and overwrite everything thats not a bin
                 foreach (var file in Directory.GetFiles(mod, "*", SearchOption.AllDirectories))
                 {
-                    var relativePath = Path.GetRelativePath(mod, file);
-                    // Copy everything except mods.aem and tblpatch to directory
-                    if (!doNotCopy.Contains(Path.GetExtension(file).ToLower())
-                        && !Path.GetDirectoryName(file).Contains("spdpatches")
-                        && Path.GetFileNameWithoutExtension(file).ToLower() != "preview" 
-                        && !relativePath.ToLower().Contains($"texture_override{Path.DirectorySeparatorChar}") //check if the file is in texture_override folder
-                        && !(game == "Persona 3 Portable" && relativePath.ToLower().Contains($"fmv{Path.DirectorySeparatorChar}")) //check if the file is an FMV for P3P
-                        && !((game == "Persona 3 Portable" || game == "Persona 1 (PSP)") && relativePath.ToLower().Contains($"cheats{Path.DirectorySeparatorChar}")))
+                    fileTasks.Add(Task.Run(() =>
                     {
+                        var relativePath = Path.GetRelativePath(mod, file);
+                        // Copy everything except mods.aem and tblpatch to directory
+                        if (doNotCopy.Contains(Path.GetExtension(file).ToLower())
+                            || Path.GetDirectoryName(file).Contains("spdpatches")
+                            || Path.GetFileNameWithoutExtension(file).ToLower() == "preview"
+                            || relativePath.ToLower().Contains($"texture_override{Path.DirectorySeparatorChar}") //check if the file is in texture_override folder
+                            || (game == "Persona 3 Portable" && relativePath.ToLower().Contains($"fmv{Path.DirectorySeparatorChar}")) //check if the file is an FMV for P3P
+                            || ((game == "Persona 3 Portable" || game == "Persona 1 (PSP)") && relativePath.ToLower().Contains($"cheats{Path.DirectorySeparatorChar}")))
+                        {
+                            return;
+                        }
                         string binPath = Path.Join(modDir, relativePath);
                         string ogBinPath = Path.Join($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}", relativePath);
 
                         if ((AemIgnore != null && AemIgnore.Any(file.Contains)) || AwbMerger.SoundArchiveExists(Path.GetDirectoryName(ogBinPath)))
-                            continue;
-                        else if (game != "Persona 1 (PSP)" && pakExtensions.Contains(Path.GetExtension(file).ToLower()))
+                            return;
+                        
+                        if (game != "Persona 1 (PSP)" && pakExtensions.Contains(Path.GetExtension(file).ToLower()))
                         {
                             if (File.Exists(ogBinPath) && modsAem.Count > 0)
                             {
@@ -258,11 +264,11 @@ namespace AemulusModManager
                                         binPath = Regex.Replace(binPath, "data0000[0-6]", Path.GetFileNameWithoutExtension(cpkLang));
                                     Directory.CreateDirectory(Path.GetDirectoryName(binPath));
                                     File.Copy(file, binPath, true);
-                                    continue;
+                                    return;
                                 }
 
                                 UnpackBin(file, game);
-                                            }
+                            }
                             else
                             {
                                 if (useCpk)
@@ -312,54 +318,71 @@ namespace AemulusModManager
                             File.Copy(file, binPath, true);
                             Utilities.ParallelLogger.Log($"[INFO] Copying over {file} to {binPath}");
                         }
-                    }
+                    }));
                 }
+                await Task.WhenAll(fileTasks);
 
                 // Copy over loose files specified by mods.aem
+                var modsAemTasks = new List<Task>();
                 foreach (var m in modsAem)
                 {
-                    if (File.Exists($@"{mod}\{m}"))
+                    modsAemTasks.Add(Task.Run(() =>
                     {
-                        string dir = $@"{modDir}\{m}";
-                        if (useCpk)
+                        if (File.Exists($@"{mod}\{m}"))
                         {
-                            dir = Regex.Replace(dir, "data0000[0-6]", Path.GetFileNameWithoutExtension(cpkLang));
-                            dir = Regex.Replace(dir, "movie0000[0-2]", "movie");
+                            string dir = $@"{modDir}\{m}";
+                            if (useCpk)
+                            {
+                                dir = Regex.Replace(dir, "data0000[0-6]", Path.GetFileNameWithoutExtension(cpkLang));
+                                dir = Regex.Replace(dir, "movie0000[0-2]", "movie");
+                            }
+                            Directory.CreateDirectory(Path.GetDirectoryName(dir));
+                            File.Copy($@"{mod}\{m}", dir, true);
+                            Utilities.ParallelLogger.Log($@"[INFO] Copying over {mod}\{m} as specified by mods.aem");
                         }
-                        Directory.CreateDirectory(Path.GetDirectoryName(dir));
-                        File.Copy($@"{mod}\{m}", dir, true);
-                        Utilities.ParallelLogger.Log($@"[INFO] Copying over {mod}\{m} as specified by mods.aem");
-                    }
+                    }));
                 }
+                await Task.WhenAll(modsAemTasks);
+
                 if (game != "Persona 1 (PSP)")
                 {
                     // Go through mod directory again to delete unpacked files after bringing them in
+                    var deletionTasks = new List<Task>();
                     foreach (var file in Directory.GetFiles(mod, "*", SearchOption.AllDirectories))
                     {
-                        if (pakExtensions.Contains(Path.GetExtension(file).ToLower())
+                        deletionTasks.Add(Task.Run(() =>
+                        {
+                            if (pakExtensions.Contains(Path.GetExtension(file).ToLower())
                             && Directory.Exists(Path.ChangeExtension(file, null))
                             && Path.GetFileNameWithoutExtension(file) != "result"
                             && Path.GetFileNameWithoutExtension(file) != "panel"
                             && Path.GetFileNameWithoutExtension(file) != "crossword")
-                        {
-                            TryDeleteDirectory(Path.ChangeExtension(file, null));
-                        }
+                            {
+                                TryDeleteDirectory(Path.ChangeExtension(file, null));
+                            }
+                        }));
                     }
 
                     if (File.Exists($@"{mod}/battle/result.pac") && Directory.Exists($@"{mod}/battle/result/result"))
                     {
                         foreach (var f in Directory.GetFiles($@"{mod}/battle/result/result"))
                         {
-                            if (Path.GetExtension(f).ToLower() == ".gfs" || Path.GetExtension(f).ToLower() == ".gmd")
-                                File.Delete(f);
+                            deletionTasks.Add(Task.Run(() =>
+                            {
+                                if (Path.GetExtension(f).ToLower() == ".gfs" || Path.GetExtension(f).ToLower() == ".gmd")
+                                    File.Delete(f);
+                            }));
                         }
                     }
                     if (File.Exists($@"{mod}/battle/result/result.spd") && Directory.Exists($@"{mod}/battle/result/result"))
                     {
                         foreach (var f in Directory.GetFiles($@"{mod}/battle/result/result"))
                         {
-                            if (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr")
-                                File.Delete(f);
+                            deletionTasks.Add(Task.Run(() =>
+                            {
+                                if (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr")
+                                    File.Delete(f);
+                            }));
                         }
                     }
                     if (File.Exists($@"{mod}/field/panel.bin") && Directory.Exists($@"{mod}/field/panel/panel"))
@@ -374,282 +397,301 @@ namespace AemulusModManager
                     {
                         foreach (var f in Directory.GetFiles($@"{mod}/minigame/crossword"))
                         {
-                            if (Path.GetExtension(f).ToLower() != ".pak")
-                                File.Delete(f);
+                            deletionTasks.Add(Task.Run(() =>
+                            {
+                                if (Path.GetExtension(f).ToLower() != ".pak")
+                                    File.Delete(f);
+                            }));
                         }
                     }
                     if (Directory.Exists($@"{mod}/minigame/crossword") && !Directory.GetFiles($@"{mod}/minigame/crossword", "*", SearchOption.AllDirectories).Any())
                         TryDeleteDirectory($@"{mod}\minigame\crossword");
+
+                    await Task.WhenAll(deletionTasks);
                 }
             }
             Utilities.ParallelLogger.Log("[INFO] Finished unpacking!");
         }
 
-        public static void Merge(string modDir, string game)
+        public static async Task Merge(string modDir, string game)
         {
             Utilities.ParallelLogger.Log("[INFO] Beginning to merge...");
             // Check if loose folder matches vanilla bin file
+            var copyTasks = new List<Task>();
             foreach (var d in Directory.GetDirectories(modDir, "*", SearchOption.AllDirectories))
             {
-                var relativePath = Path.GetRelativePath(modDir, d);
-                string ogPath = Path.Combine($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}", relativePath);
-
-                if(ArchiveExists(ogPath, out string extension) && !File.Exists(Path.ChangeExtension(d, extension)))
+                copyTasks.Add(Task.Run(() =>
                 {
-                    ogPath = Path.ChangeExtension(ogPath, extension);
-                    if (Path.GetFileName(ogPath) == "panel.bin" && !Directory.Exists($@"{d}/panel")) { continue; }
-                    if (Path.GetFileName(ogPath) == "result.pac" &&
-                        (!Directory.Exists($@"{d}/result") ||
-                        (!Directory.GetFiles($@"{d}/result", "*.GFS", SearchOption.TopDirectoryOnly).Any() && !Directory.GetFiles($@"{d}/result", "*.GMD", SearchOption.TopDirectoryOnly).Any())))
-                            continue;
+                    var relativePath = Path.GetRelativePath(modDir, d);
+                    string ogPath = Path.Combine($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}", relativePath);
 
-                    if (Path.GetFileName(ogPath) == "crossword.pak" &&
-                        !Directory.GetFiles(d, "*.dds", SearchOption.AllDirectories).Any() &&
-                        !Directory.GetFiles(d, "*.spdspr", SearchOption.AllDirectories).Any() &&
-                        !Directory.GetFiles(d, "*.bmd", SearchOption.AllDirectories).Any() &&
-                        !Directory.GetFiles(d, "*.plg", SearchOption.AllDirectories).Any())
-                            continue;
-
-                    Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
-                    Directory.CreateDirectory(Path.GetDirectoryName(d));
-                    File.Copy(ogPath, Path.ChangeExtension(d, extension));
-                }
-                if (game != "Persona Q2" && File.Exists(Path.ChangeExtension(ogPath, ".spr")) && !File.Exists(Path.ChangeExtension(d, ".spr")))
-                {
-                    ogPath = Path.ChangeExtension(ogPath, ".spr");
-                    Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
-                    Directory.CreateDirectory(Path.GetDirectoryName(d));
-                    File.Copy(ogPath, $@"{Path.GetDirectoryName(d)}\{Path.GetFileName(ogPath)}");
-                }
-                if (File.Exists(Path.ChangeExtension(ogPath, ".spd")) && !File.Exists(Path.ChangeExtension(d, ".spd")))
-                {
-                    ogPath = Path.ChangeExtension(ogPath, ".spd");
-                    if (Path.GetFileName(ogPath) == "result.spd")
+                    if (ArchiveExists(ogPath, out string extension) && !File.Exists(Path.ChangeExtension(d, extension)))
                     {
-                        if (!Directory.GetFiles(d, "*.dds", SearchOption.TopDirectoryOnly).Any()
-                            && !Directory.GetFiles(d, "*.spdspr", SearchOption.TopDirectoryOnly).Any())
-                            continue;
+                        ogPath = Path.ChangeExtension(ogPath, extension);
+                        if (Path.GetFileName(ogPath) == "panel.bin" && !Directory.Exists($@"{d}/panel")) { return; }
+                        if (Path.GetFileName(ogPath) == "result.pac" &&
+                            (!Directory.Exists($@"{d}/result") ||
+                            (!Directory.GetFiles($@"{d}/result", "*.GFS", SearchOption.TopDirectoryOnly).Any() && !Directory.GetFiles($@"{d}/result", "*.GMD", SearchOption.TopDirectoryOnly).Any())))
+                            return;
+
+                        if (Path.GetFileName(ogPath) == "crossword.pak" &&
+                            !Directory.GetFiles(d, "*.dds", SearchOption.AllDirectories).Any() &&
+                            !Directory.GetFiles(d, "*.spdspr", SearchOption.AllDirectories).Any() &&
+                            !Directory.GetFiles(d, "*.bmd", SearchOption.AllDirectories).Any() &&
+                            !Directory.GetFiles(d, "*.plg", SearchOption.AllDirectories).Any())
+                            return;
+
+                        Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
+                        Directory.CreateDirectory(Path.GetDirectoryName(d));
+                        File.Copy(ogPath, Path.ChangeExtension(d, extension));
                     }
-                    if (Path.GetFileName(ogPath) == "crossword.spd")
+                    if (game != "Persona Q2" && File.Exists(Path.ChangeExtension(ogPath, ".spr")) && !File.Exists(Path.ChangeExtension(d, ".spr")))
                     {
-                        if (!Directory.GetFiles(d, "*.dds", SearchOption.TopDirectoryOnly).Any()
-                            && !Directory.GetFiles(d, "*.spdspr", SearchOption.TopDirectoryOnly).Any())
-                            continue;
+                        ogPath = Path.ChangeExtension(ogPath, ".spr");
+                        Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
+                        Directory.CreateDirectory(Path.GetDirectoryName(d));
+                        File.Copy(ogPath, $@"{Path.GetDirectoryName(d)}\{Path.GetFileName(ogPath)}");
                     }
-                    Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
-                    Directory.CreateDirectory(Path.GetDirectoryName(d));
-                    File.Copy(ogPath, $@"{Path.GetDirectoryName(d)}\{Path.GetFileName(ogPath)}");
-                }
+                    if (File.Exists(Path.ChangeExtension(ogPath, ".spd")) && !File.Exists(Path.ChangeExtension(d, ".spd")))
+                    {
+                        ogPath = Path.ChangeExtension(ogPath, ".spd");
+                        if (Path.GetFileName(ogPath) == "result.spd")
+                        {
+                            if (!Directory.GetFiles(d, "*.dds", SearchOption.TopDirectoryOnly).Any()
+                                && !Directory.GetFiles(d, "*.spdspr", SearchOption.TopDirectoryOnly).Any())
+                                return;
+                        }
+                        if (Path.GetFileName(ogPath) == "crossword.spd")
+                        {
+                            if (!Directory.GetFiles(d, "*.dds", SearchOption.TopDirectoryOnly).Any()
+                                && !Directory.GetFiles(d, "*.spdspr", SearchOption.TopDirectoryOnly).Any())
+                                return;
+                        }
+                        Utilities.ParallelLogger.Log($"[INFO] Copying over {ogPath} to use as base.");
+                        Directory.CreateDirectory(Path.GetDirectoryName(d));
+                        File.Copy(ogPath, $@"{Path.GetDirectoryName(d)}\{Path.GetFileName(ogPath)}");
+                    }
+                }));
             }
+            await Task.WhenAll(copyTasks);
 
+            var mergeTasks = new List<Task>();
             foreach (var file in Directory.GetFiles(modDir, "*", SearchOption.AllDirectories))
             {
-                if (pakExtensions.Contains(Path.GetExtension(file).ToLower()))
+                mergeTasks.Add(Task.Run(() =>
                 {
-                    if (Directory.Exists(Path.ChangeExtension(file, null)))
+                    if (pakExtensions.Contains(Path.GetExtension(file).ToLower()))
                     {
-                        Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
-                        string bin = file;
-                        string binFolder = Path.ChangeExtension(file, null);
-
-                        // Get contents of init_free
-                        List<string> contents = getFileContents(bin);
-
-                        // Unpack archive for future unpacking
-                        string temp = $"{binFolder}_temp";
-                        PAKPackCMD($"unpack \"{bin}\" \"{temp}\"");
-
-                        foreach (var f in Directory.GetFiles(binFolder, "*", SearchOption.AllDirectories))
+                        if (Directory.Exists(Path.ChangeExtension(file, null)))
                         {
-                            // Get bin path used for PAKPack.exe
-                            string binPath = Path.GetRelativePath(binFolder, f);
-                            // Case for paths in Persona 5 event paks
-                            if (contents.Contains($"../../../{binPath}"))
+                            Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
+                            string bin = file;
+                            string binFolder = Path.ChangeExtension(file, null);
+
+                            // Get contents of init_free
+                            List<string> contents = getFileContents(bin);
+
+                            // Unpack archive for future unpacking
+                            string temp = $"{binFolder}_temp";
+                            PAKPackCMD($"unpack \"{bin}\" \"{temp}\"");
+
+                            foreach (var f in Directory.GetFiles(binFolder, "*", SearchOption.AllDirectories))
                             {
-                                string args = $"replace \"{bin}\" ../../../{binPath} \"{f}\" \"{bin}\"";
-                                PAKPackCMD(args);
-                            }
-                            else if (contents.Contains($"../../{binPath}"))
-                            {
-                                string args = $"replace \"{bin}\" ../../{binPath} \"{f}\" \"{bin}\"";
-                                PAKPackCMD(args);
-                            }
-                            else if (contents.Contains($"../{binPath}"))
-                            {
-                                string args = $"replace \"{bin}\" ../{binPath} \"{f}\" \"{bin}\"";
-                                PAKPackCMD(args);
-                            }
-                            // Check if more unpacking needs to be done to replace
-                            else if (!contents.Contains(binPath))
-                            {
-                                string longestPrefix = "";
-                                int longestPrefixLen = 0;
-                                foreach (var c in contents)
+                                // Get bin path used for PAKPack.exe
+                                string binPath = Path.GetRelativePath(binFolder, f);
+                                // Case for paths in Persona 5 event paks
+                                if (contents.Contains($"../../../{binPath}"))
                                 {
-                                    int prefixLen = commonPrefixUtil(c, binPath);
-                                    int otherPrefixLen = commonPrefixUtil(c, $"../../{binPath}");
-                                    int otherOtherPrefixLen = commonPrefixUtil(c, $"../{binPath}");
-                                    int maxLen = Math.Max(Math.Max(prefixLen, otherPrefixLen), otherOtherPrefixLen);
-                                    if (maxLen > longestPrefixLen)
-                                    {
-                                        longestPrefix = c;
-                                        longestPrefixLen = maxLen;
-                                    }
-                                    else if (maxLen == longestPrefixLen)
-                                    {
-                                        if ((Path.GetExtension(c).Equals(".spd", StringComparison.InvariantCultureIgnoreCase)
-                                            || Path.GetExtension(c).Equals(".spr", StringComparison.InvariantCultureIgnoreCase)
-                                            || pakExtensions.Contains(Path.GetExtension(c).ToLower()))
-                                            && !(Path.GetExtension(longestPrefix).Equals(".spd", StringComparison.InvariantCultureIgnoreCase)
-                                            || Path.GetExtension(longestPrefix).Equals(".spr", StringComparison.InvariantCultureIgnoreCase)
-                                            || pakExtensions.Contains(Path.GetExtension(longestPrefix).ToLower())))
-                                            longestPrefix = c;
-                                        else if (c[longestPrefixLen] == '.')
-                                            longestPrefix = c;
-                                    }
+                                    string args = $"replace \"{bin}\" ../../../{binPath} \"{f}\" \"{bin}\"";
+                                    PAKPackCMD(args);
                                 }
-                                // Check if we can unpack again
-                                if (pakExtensions.Contains(Path.GetExtension(longestPrefix).ToLower()))
+                                else if (contents.Contains($"../../{binPath}"))
                                 {
-                                    string file2 = $@"{temp}\{longestPrefix.Replace("/", "\\")}";
-                                    List<string> contents2 = getFileContents(file2);
-
-                                    string binPath2 = Path.GetRelativePath(longestPrefix, binPath);
-
-                                    if (contents2.Contains(binPath2))
+                                    string args = $"replace \"{bin}\" ../../{binPath} \"{f}\" \"{bin}\"";
+                                    PAKPackCMD(args);
+                                }
+                                else if (contents.Contains($"../{binPath}"))
+                                {
+                                    string args = $"replace \"{bin}\" ../{binPath} \"{f}\" \"{bin}\"";
+                                    PAKPackCMD(args);
+                                }
+                                // Check if more unpacking needs to be done to replace
+                                else if (!contents.Contains(binPath))
+                                {
+                                    string longestPrefix = "";
+                                    int longestPrefixLen = 0;
+                                    foreach (var c in contents)
                                     {
-                                        PAKPackCMD($"replace \"{file2}\" {binPath2} \"{f}\" \"{file2}\"");
-                                        PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
-                                    }
-                                    else
-                                    {
-                                        string longestPrefix2 = "";
-                                        int longestPrefixLen2 = 0;
-                                        foreach (var c in contents2)
+                                        int prefixLen = commonPrefixUtil(c, binPath);
+                                        int otherPrefixLen = commonPrefixUtil(c, $"../../{binPath}");
+                                        int otherOtherPrefixLen = commonPrefixUtil(c, $"../{binPath}");
+                                        int maxLen = Math.Max(Math.Max(prefixLen, otherPrefixLen), otherOtherPrefixLen);
+                                        if (maxLen > longestPrefixLen)
                                         {
-                                            int prefixLen = commonPrefixUtil(c, binPath2);
-                                            if (prefixLen > longestPrefixLen2)
-                                            {
-                                                longestPrefix2 = c;
-                                                longestPrefixLen2 = prefixLen;
-                                            }
+                                            longestPrefix = c;
+                                            longestPrefixLen = maxLen;
                                         }
-                                        // Check if we can unpack again
-                                        if (pakExtensions.Contains(Path.GetExtension(longestPrefix2).ToLower()))
+                                        else if (maxLen == longestPrefixLen)
                                         {
-                                            string file3 = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";
-                                            PAKPackCMD($"unpack \"{file2}\"");
-                                            List<string> contents3 = getFileContents(file3);
+                                            if ((Path.GetExtension(c).Equals(".spd", StringComparison.InvariantCultureIgnoreCase)
+                                                || Path.GetExtension(c).Equals(".spr", StringComparison.InvariantCultureIgnoreCase)
+                                                || pakExtensions.Contains(Path.GetExtension(c).ToLower()))
+                                                && !(Path.GetExtension(longestPrefix).Equals(".spd", StringComparison.InvariantCultureIgnoreCase)
+                                                || Path.GetExtension(longestPrefix).Equals(".spr", StringComparison.InvariantCultureIgnoreCase)
+                                                || pakExtensions.Contains(Path.GetExtension(longestPrefix).ToLower())))
+                                                longestPrefix = c;
+                                            else if (c[longestPrefixLen] == '.')
+                                                longestPrefix = c;
+                                        }
+                                    }
+                                    // Check if we can unpack again
+                                    if (pakExtensions.Contains(Path.GetExtension(longestPrefix).ToLower()))
+                                    {
+                                        string file2 = $@"{temp}\{longestPrefix.Replace("/", "\\")}";
+                                        List<string> contents2 = getFileContents(file2);
 
-                                            List<string> split2 = new List<string>(binPath2.Split(char.Parse("/")));
-                                            int numPrefixFolders2 = longestPrefix2.Split(char.Parse("/")).Length;
-                                            string binPath3 = string.Join("/", split2.ToArray().Skip(numPrefixFolders2).ToArray());
+                                        string binPath2 = Path.GetRelativePath(longestPrefix, binPath);
 
-                                            if (contents3.Contains(binPath3))
+                                        if (contents2.Contains(binPath2))
+                                        {
+                                            PAKPackCMD($"replace \"{file2}\" {binPath2} \"{f}\" \"{file2}\"");
+                                            PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
+                                        }
+                                        else
+                                        {
+                                            string longestPrefix2 = "";
+                                            int longestPrefixLen2 = 0;
+                                            foreach (var c in contents2)
                                             {
-                                                PAKPackCMD($"replace \"{file3}\" {binPath3} \"{f}\" \"{file3}\"");
-                                                PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{file3}\" \"{file2}\"");
+                                                int prefixLen = commonPrefixUtil(c, binPath2);
+                                                if (prefixLen > longestPrefixLen2)
+                                                {
+                                                    longestPrefix2 = c;
+                                                    longestPrefixLen2 = prefixLen;
+                                                }
+                                            }
+                                            // Check if we can unpack again
+                                            if (pakExtensions.Contains(Path.GetExtension(longestPrefix2).ToLower()))
+                                            {
+                                                string file3 = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";
+                                                PAKPackCMD($"unpack \"{file2}\"");
+                                                List<string> contents3 = getFileContents(file3);
+
+                                                List<string> split2 = new List<string>(binPath2.Split(char.Parse("/")));
+                                                int numPrefixFolders2 = longestPrefix2.Split(char.Parse("/")).Length;
+                                                string binPath3 = string.Join("/", split2.ToArray().Skip(numPrefixFolders2).ToArray());
+
+                                                if (contents3.Contains(binPath3))
+                                                {
+                                                    PAKPackCMD($"replace \"{file3}\" {binPath3} \"{f}\" \"{file3}\"");
+                                                    PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{file3}\" \"{file2}\"");
+                                                    PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
+                                                }
+                                            }
+                                            else if (Path.GetExtension(longestPrefix2).ToLower() == ".spd" && (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr"))
+                                            {
+                                                PAKPackCMD($"unpack \"{file2}\"");
+                                                string spdPath = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";
+                                                if (Path.GetExtension(f).ToLower() == ".dds")
+                                                    spdUtils.replaceDDS(spdPath, f);
+                                                else
+                                                    spdUtils.replaceSPDKey(spdPath, f);
+                                                Utilities.ParallelLogger.Log($"[INFO] Replacing {spdPath} in {f}");
+                                                PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{spdPath}\" \"{file2}\"");
+                                                PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
+                                            }
+                                            else if (game != "Persona Q2" && Path.GetExtension(longestPrefix2).ToLower() == ".spr" && Path.GetExtension(f).ToLower() == ".tmx")
+                                            {
+                                                PAKPackCMD($"unpack \"{file2}\"");
+                                                string sprPath = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";
+                                                sprUtils.replaceTmx(sprPath, f);
+                                                PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{sprPath}\" \"{file2}\"");
                                                 PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
                                             }
                                         }
-                                        else if (Path.GetExtension(longestPrefix2).ToLower() == ".spd" && (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr"))
-                                        {
-                                            PAKPackCMD($"unpack \"{file2}\"");
-                                            string spdPath = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";                                          
-                                            if (Path.GetExtension(f).ToLower() == ".dds")
-                                                spdUtils.replaceDDS(spdPath, f);
-                                            else
-                                                spdUtils.replaceSPDKey(spdPath, f);
-                                            Utilities.ParallelLogger.Log($"[INFO] Replacing {spdPath} in {f}");
-                                            PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{spdPath}\" \"{file2}\"");
-                                            PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
-                                        }
-                                        else if (game != "Persona Q2" && Path.GetExtension(longestPrefix2).ToLower() == ".spr" && Path.GetExtension(f).ToLower() == ".tmx")
-                                        {
-                                            PAKPackCMD($"unpack \"{file2}\"");
-                                            string sprPath = $@"{temp}\{Path.ChangeExtension(longestPrefix.Replace("/", "\\"), null)}\{longestPrefix2.Replace("/", "\\")}";
-                                            sprUtils.replaceTmx(sprPath, f);
-                                            PAKPackCMD($"replace \"{file2}\" {longestPrefix2} \"{sprPath}\" \"{file2}\"");
-                                            PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{file2}\" \"{bin}\"");
-                                        }
+                                    }
+                                    else if (Path.GetExtension(longestPrefix).ToLower() == ".spd" && (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr"))
+                                    {
+                                        string spdPath = $@"{temp}\{longestPrefix.Replace("/", "\\")}";
+                                        if (File.Exists(spdPath.Replace("_temp", String.Empty)))
+                                            File.Copy(spdPath.Replace("_temp", String.Empty), spdPath, true);
+                                        if (Path.GetExtension(f).ToLower() == ".dds")
+                                            spdUtils.replaceDDS(spdPath, f);
+                                        else
+                                            spdUtils.replaceSPDKey(spdPath, f);
+                                        Utilities.ParallelLogger.Log($"[INFO] Replacing {spdPath} in {f}");
+                                        PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{spdPath}\" \"{bin}\"");
+                                    }
+                                    else if (Path.GetExtension(longestPrefix).ToLower() == ".spr" && Path.GetExtension(f).ToLower() == ".tmx")
+                                    {
+                                        string path = longestPrefix.Replace("../", "");
+                                        string sprPath = $@"{temp}\{path.Replace("/", "\\")}";
+                                        sprUtils.replaceTmx(sprPath, f);
+                                        PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{sprPath}\" \"{bin}\"");
                                     }
                                 }
-                                else if (Path.GetExtension(longestPrefix).ToLower() == ".spd" && (Path.GetExtension(f).ToLower() == ".dds" || Path.GetExtension(f).ToLower() == ".spdspr"))
+                                else
                                 {
-                                    string spdPath = $@"{temp}\{longestPrefix.Replace("/", "\\")}";
-                                    if (File.Exists(spdPath.Replace("_temp", String.Empty)))
-                                        File.Copy(spdPath.Replace("_temp", String.Empty), spdPath, true);
-                                    if (Path.GetExtension(f).ToLower() == ".dds")
-                                        spdUtils.replaceDDS(spdPath, f);
-                                    else
-                                        spdUtils.replaceSPDKey(spdPath, f);
-                                    Utilities.ParallelLogger.Log($"[INFO] Replacing {spdPath} in {f}");
-                                    PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{spdPath}\" \"{bin}\"");
-                                }
-                                else if (Path.GetExtension(longestPrefix).ToLower() == ".spr" && Path.GetExtension(f).ToLower() == ".tmx")
-                                {
-                                    string path = longestPrefix.Replace("../", "");
-                                    string sprPath = $@"{temp}\{path.Replace("/", "\\")}";
-                                    sprUtils.replaceTmx(sprPath, f);
-                                    PAKPackCMD($"replace \"{bin}\" {longestPrefix} \"{sprPath}\" \"{bin}\"");
+                                    string args = $"replace \"{bin}\" {binPath} \"{f}\" \"{bin}\"";
+                                    PAKPackCMD(args);
                                 }
                             }
-                            else
-                            {
-                                string args = $"replace \"{bin}\" {binPath} \"{f}\" \"{bin}\"";
-                                PAKPackCMD(args);
-                            }
+                            TryDeleteDirectory(temp);
                         }
-                        TryDeleteDirectory(temp);
                     }
-                }
-                else if (Path.GetExtension(file).ToLower() == ".spd")
-                {
-                    Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
-                    string spdFolder = Path.ChangeExtension(file, null);
-                    if (Directory.Exists(spdFolder))
+                    else if (Path.GetExtension(file).ToLower() == ".spd")
                     {
-                        foreach (var spdFile in Directory.GetFiles(spdFolder, "*", SearchOption.AllDirectories))
+                        Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
+                        string spdFolder = Path.ChangeExtension(file, null);
+                        if (Directory.Exists(spdFolder))
                         {
-                            if (Path.GetExtension(spdFile).ToLower() == ".dds")
+                            foreach (var spdFile in Directory.GetFiles(spdFolder, "*", SearchOption.AllDirectories))
                             {
-                                Utilities.ParallelLogger.Log($"[INFO] Replacing {spdFile} in {file}");
-                                spdUtils.replaceDDS(file, spdFile);
-                            }
-                            else if (Path.GetExtension(spdFile).ToLower() == ".spdspr")
-                            {
-                                spdUtils.replaceSPDKey(file, spdFile);
-                                Utilities.ParallelLogger.Log($"[INFO] Replacing {spdFile} in {file}");
+                                if (Path.GetExtension(spdFile).ToLower() == ".dds")
+                                {
+                                    Utilities.ParallelLogger.Log($"[INFO] Replacing {spdFile} in {file}");
+                                    spdUtils.replaceDDS(file, spdFile);
+                                }
+                                else if (Path.GetExtension(spdFile).ToLower() == ".spdspr")
+                                {
+                                    spdUtils.replaceSPDKey(file, spdFile);
+                                    Utilities.ParallelLogger.Log($"[INFO] Replacing {spdFile} in {file}");
+                                }
                             }
                         }
                     }
-                }
-                else if (game != "Persona Q2" && Path.GetExtension(file).ToLower() == ".spr")
-                {
-                    Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
-                    string sprFolder = Path.ChangeExtension(file, null);
-                    if (Directory.Exists(sprFolder))
+                    else if (game != "Persona Q2" && Path.GetExtension(file).ToLower() == ".spr")
                     {
-                        foreach (var sprFile in Directory.GetFiles(sprFolder, "*", SearchOption.AllDirectories))
+                        Utilities.ParallelLogger.Log($@"[INFO] Merging {file}...");
+                        string sprFolder = Path.ChangeExtension(file, null);
+                        if (Directory.Exists(sprFolder))
                         {
-                            Utilities.ParallelLogger.Log($"[INFO] Replacing {sprFile} in {file}");
-                            sprUtils.replaceTmx(file, sprFile);
+                            foreach (var sprFile in Directory.GetFiles(sprFolder, "*", SearchOption.AllDirectories))
+                            {
+                                Utilities.ParallelLogger.Log($"[INFO] Replacing {sprFile} in {file}");
+                                sprUtils.replaceTmx(file, sprFile);
+                            }
                         }
                     }
-                }
+                }));
             }
+            await Task.WhenAll(copyTasks);
             
             // Go through mod directory again to delete unpacked files after bringing them in
+            var deletionTasks = new List<Task>();
             foreach (var file in Directory.GetFiles(modDir, "*", SearchOption.AllDirectories))
             {
-                if ((pakExtensions.Contains(Path.GetExtension(file)) || Path.GetExtension(file) == ".spd" || Path.GetExtension(file) == ".spr")
+                deletionTasks.Add(Task.Run(() =>
+                {
+                    if ((pakExtensions.Contains(Path.GetExtension(file)) || Path.GetExtension(file) == ".spd" || Path.GetExtension(file) == ".spr")
                     && Directory.Exists(Path.ChangeExtension(file, null))
                     && Path.GetFileNameWithoutExtension(file) != "result"
                     && Path.GetFileNameWithoutExtension(file) != "panel"
                     && Path.GetFileNameWithoutExtension(file) != "crossword")
-                {
-                    TryDeleteDirectory(Path.ChangeExtension(file, null));
-                }
+                    {
+                        TryDeleteDirectory(Path.ChangeExtension(file, null));
+                    }
+                }));
             }
 
             // Hardcoded cases TODO: reimplement extracted folders to have file extensions as part of the name, although would need to refactor every aemulus mod
@@ -670,17 +712,21 @@ namespace AemulusModManager
             if (Directory.Exists($@"{modDir}/minigame/crossword"))
             {
                 foreach (var file in Directory.GetFiles($@"{modDir}/minigame/crossword", "*", SearchOption.AllDirectories))
-                    if (Path.GetExtension(file).ToLower() != ".pak")
-                        File.Delete(file);
+                    deletionTasks.Add(Task.Run(() =>
+                    {
+                        if (Path.GetExtension(file).ToLower() != ".pak")
+                            File.Delete(file);
+                    }));
             }
             if (Directory.Exists($@"{modDir}/minigame/crossword") && !Directory.EnumerateFileSystemEntries($@"{modDir}/minigame/crossword").Any())
                 TryDeleteDirectory($@"{modDir}/minigame/crossword");
+            await Task.WhenAll(deletionTasks);
 
             Utilities.ParallelLogger.Log("[INFO] Finished merging!");
             return;
         }
 
-        public static void Restart(string modDir, bool emptySND, string game, string cpkLang, string cheats, string cheatsWS, bool empty = false)
+        public static async Task Restart(string modDir, bool emptySND, string game, string cpkLang, string cheats, string cheatsWS, bool empty = false)
         {
             Utilities.ParallelLogger.Log("[INFO] Deleting current mod build...");
             // Revert appended cpks
@@ -717,17 +763,28 @@ namespace AemulusModManager
             if (!emptySND || game == "Persona 3 FES")
             {
                 Utilities.ParallelLogger.Log("[INFO] Keeping SND folder.");
+                var deleteDirectories = new List<Task>();
                 foreach (var dir in Directory.GetDirectories(modDir))
                 {
-                    if (Path.GetFileName(dir).ToLower() != "snd")
-                        TryDeleteDirectory(dir);
+                    deleteDirectories.Add(Task.Run(() =>
+                    {
+                        if (Path.GetFileName(dir).ToLower() != "snd")
+                            TryDeleteDirectory(dir);
+                    }));
                 }
+                await Task.WhenAll(deleteDirectories);
+
                 // Delete top layer files too
+                var deleteFiles = new List<Task>();
                 foreach (var file in Directory.GetFiles(modDir))
                 {
-                    if (Path.GetExtension(file).ToLower() != ".elf" && Path.GetExtension(file).ToLower() != ".iso")
-                        File.Delete(file);
+                    deleteFiles.Add(Task.Run(() =>
+                    {
+                        if (Path.GetExtension(file).ToLower() != ".elf" && Path.GetExtension(file).ToLower() != ".iso")
+                            File.Delete(file);
+                    }));
                 }
+                await Task.WhenAll(deleteFiles);
             }
             else
             {
@@ -741,17 +798,19 @@ namespace AemulusModManager
                 MakeCpk(modDir, true, empty);
             }
             // Delete Aemulus pnaches in cheats folder
+            var deleteCheats = new List<Task>();
             if (game == "Persona 3 FES" && cheats != null && Directory.Exists(cheats))
             {
                 foreach (var pnach in Directory.GetFiles(cheats, "*_aem.pnach", SearchOption.TopDirectoryOnly))
-                    File.Delete(pnach);
+                    deleteCheats.Add(Task.Run(() => { File.Delete(pnach); }));
             }
             // Delete Aemulus pnaches in cheats_ws folder
             if (game == "Persona 3 FES" && cheatsWS != null && Directory.Exists(cheatsWS))
             {
                 foreach (var pnach in Directory.GetFiles(cheatsWS, "*_aem.pnach", SearchOption.TopDirectoryOnly))
-                    File.Delete(pnach);
+                    deleteCheats.Add(Task.Run(() => { File.Delete(pnach); }));
             }
+            await Task.WhenAll(deleteCheats);
         }
 
         public static string GetChecksumString(string filePath)
@@ -798,7 +857,7 @@ namespace AemulusModManager
             }
         }
 
-        public static void LoadCheats(List<string> mods, string cheatsDir)
+        public static async Task LoadCheats(List<string> mods, string cheatsDir)
         {
             foreach (string dir in mods)
             {
@@ -809,14 +868,19 @@ namespace AemulusModManager
                     continue;
                 }
                 // Copy over cheats
+                var tasks = new List<Task>();
                 foreach (var cheat in Directory.GetFiles($@"{dir}\cheats", "*.pnach", SearchOption.AllDirectories))
                 {
-                    File.Copy(cheat, $@"{cheatsDir}\{Path.GetFileNameWithoutExtension(cheat)}_aem.pnach", true);
-                    Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileNameWithoutExtension(cheat)}_aem.pnach to {cheatsDir}");
+                    tasks.Add(Task.Run(() =>
+                    {
+                        File.Copy(cheat, $@"{cheatsDir}\{Path.GetFileNameWithoutExtension(cheat)}_aem.pnach", true);
+                        Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileNameWithoutExtension(cheat)}_aem.pnach to {cheatsDir}");
+                    }));
                 }
+                await Task.WhenAll(tasks);
             }
         }
-        public static void LoadCheatsWS(List<string> mods, string cheatsDir)
+        public static async Task LoadCheatsWS(List<string> mods, string cheatsDir)
         {
             foreach (string dir in mods)
             {
@@ -827,14 +891,19 @@ namespace AemulusModManager
                     continue;
                 }
                 // Copy over cheats
+                var tasks = new List<Task>();
                 foreach (var cheat in Directory.GetFiles($@"{dir}\cheats_ws", "*.pnach", SearchOption.AllDirectories))
                 {
-                    File.Copy(cheat, $@"{cheatsDir}\{Path.GetFileNameWithoutExtension(cheat)}_aem.pnach", true);
-                    Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileNameWithoutExtension(cheat)}_aem.pnach to {cheatsDir}");
+                    tasks.Add(Task.Run(() =>
+                    {
+                        File.Copy(cheat, $@"{cheatsDir}\{Path.GetFileNameWithoutExtension(cheat)}_aem.pnach", true);
+                        Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileNameWithoutExtension(cheat)}_aem.pnach to {cheatsDir}");
+                    }));
                 }
+                await Task.WhenAll(tasks);
             }
         }
-        public static void LoadTextures(List<string> mods, string texturesDir)
+        public static async Task LoadTextures(List<string> mods, string texturesDir)
         {
             foreach (string dir in mods)
             {
@@ -846,18 +915,23 @@ namespace AemulusModManager
                 }
 
                 // Copy over textures
+                var tasks = new List<Task>();
                 foreach (var texture in Directory.GetFiles($@"{dir}\texture_override", "*", SearchOption.AllDirectories))
                 {
-                    var relativePath = Path.GetRelativePath($@"{dir}/texture_override", texture);
-                    string binPath = Path.Combine(texturesDir, relativePath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(binPath));
-                    File.Copy(texture, binPath, true);
-                    Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileName(texture)} to {binPath}");
+                    tasks.Add(Task.Run(() =>
+                    {
+                        var relativePath = Path.GetRelativePath($@"{dir}/texture_override", texture);
+                        string binPath = Path.Combine(texturesDir, relativePath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(binPath));
+                        File.Copy(texture, binPath, true);
+                        Utilities.ParallelLogger.Log($"[INFO] Copied over {Path.GetFileName(texture)} to {binPath}");
+                    }));
                 }
+                await Task.WhenAll(tasks);
             }
         }
 
-        public static void LoadFMVs(List<string> mods, string modDir)
+        public static async Task LoadFMVs(List<string> mods, string modDir)
         {
             List<string> copiedFmvs = new List<string>();
             foreach (string dir in mods)
@@ -868,43 +942,57 @@ namespace AemulusModManager
                     Directory.CreateDirectory(Path.Combine(modDir, "FMV"));
 
                 // Copy over FMVS
+                var copyTasks = new List<Task>();
                 foreach (var fmv in Directory.GetFiles($@"{dir}\FMV", "*.pmsf"))
                 {
-                    copiedFmvs.Add(Path.GetFileName(fmv));
-                    var destinationFmv = Path.Combine(modDir, "FMV", Path.GetFileName(fmv));
-                    if (File.Exists(destinationFmv))
+                    copyTasks.Add(Task.Run(() =>
                     {
-                        if (Utils.SameFiles(fmv, destinationFmv))
+                        copiedFmvs.Add(Path.GetFileName(fmv));
+                        var destinationFmv = Path.Combine(modDir, "FMV", Path.GetFileName(fmv));
+                        if (File.Exists(destinationFmv))
                         {
-                            Utilities.ParallelLogger.Log($"[INFO] Skipping {fmv} as it is already at {destinationFmv}");
-                            continue;
+                            if (Utils.SameFiles(fmv, destinationFmv))
+                            {
+                                Utilities.ParallelLogger.Log($"[INFO] Skipping {fmv} as it is already at {destinationFmv}");
+                                return;
+                            }
                         }
-                    }
-                    try
-                    {
-                        File.Copy(fmv, destinationFmv, true);
-                        Utilities.ParallelLogger.Log($"[INFO] Copying {fmv} over {destinationFmv}");
-                    } catch(Exception e)
-                    {
-                        Utilities.ParallelLogger.Log($"[ERROR] Unable to copy {fmv} to {destinationFmv}: {e.Message}");
-                    }
+                        try
+                        {
+                            File.Copy(fmv, destinationFmv, true);
+                            Utilities.ParallelLogger.Log($"[INFO] Copying {fmv} over {destinationFmv}");
+                        }
+                        catch (Exception e)
+                        {
+                            Utilities.ParallelLogger.Log($"[ERROR] Unable to copy {fmv} to {destinationFmv}: {e.Message}");
+                        }
+                    }));
                 }
+                await Task.WhenAll(copyTasks);
             } 
             if (Directory.Exists(Path.Combine(modDir, "FMV")))
             // Delete any FMVs in the P3P FMV folder that weren't from one of the mods
-            foreach(var file in Directory.EnumerateFiles(Path.Combine(modDir, "FMV")).Where(f => !copiedFmvs.Contains(Path.GetFileName(f)))) {
-                try
-                {
-                    File.Delete(file);
-                    Utilities.ParallelLogger.Log($"[INFO] Deleting unwanted FMV {file}");
-                } catch(Exception e)
-                {
-                    Utilities.ParallelLogger.Log($"[ERROR] Unable to delete unwatned FMV {file}: {e.Message}");
+            {
+                var deletionTasks = new List<Task>();
+                foreach (var file in Directory.EnumerateFiles(Path.Combine(modDir, "FMV")).Where(f => !copiedFmvs.Contains(Path.GetFileName(f)))) {
+                    deletionTasks.Add(Task.Run(() =>
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            Utilities.ParallelLogger.Log($"[INFO] Deleting unwanted FMV {file}");
+                        }
+                        catch (Exception e)
+                        {
+                            Utilities.ParallelLogger.Log($"[ERROR] Unable to delete unwatned FMV {file}: {e.Message}");
+                        }
+                    }));
                 }
+                await Task.WhenAll(deletionTasks);
             }
         }
 
-        public static void LoadP3PCheats(List<string> mods, string cheatFile)
+        public static async Task LoadP3PCheats(List<string> mods, string cheatFile)
         {
             foreach (string dir in mods)
             {
@@ -921,14 +1009,19 @@ namespace AemulusModManager
                 {
                     Utilities.ParallelLogger.Log($"[INFO] Applying cheats from {newCheatFile}");
                     var newCheats = PPSSPPCheatFile.ParseCheats(newCheatFile);
+                    var tasks = new List<Task>();
                     foreach(var cheat in newCheats.Cheats)
                     {
-                        var existingCheat = existingCheats.Cheats.FirstOrDefault(c => c.Name == cheat.Name);
-                        if (existingCheat != null)
-                            existingCheat.Contents = cheat.Contents;
-                        else
-                            existingCheats.Cheats.Add(cheat);
+                        tasks.Add(Task.Run(() =>
+                        {
+                            var existingCheat = existingCheats.Cheats.FirstOrDefault(c => c.Name == cheat.Name);
+                            if (existingCheat != null)
+                                existingCheat.Contents = cheat.Contents;
+                            else
+                                existingCheats.Cheats.Add(cheat);
+                        }));
                     }
+                    await Task.WhenAll(tasks);
                 }
 
                 // Write the ini with cheats in it
@@ -948,7 +1041,7 @@ namespace AemulusModManager
 
         }
 
-        internal static void LoadP1PSPCheats(List<string> mods, string cheatFile)
+        internal static async Task LoadP1PSPCheats(List<string> mods, string cheatFile)
         {
             foreach (string dir in mods)
             {
@@ -965,14 +1058,19 @@ namespace AemulusModManager
                 {
                     Utilities.ParallelLogger.Log($"[INFO] Applying cheats from {newCheatFile}");
                     var newCheats = PPSSPPCheatFile.ParseCheats(newCheatFile);
+                    var tasks = new List<Task>();
                     foreach (var cheat in newCheats.Cheats)
                     {
-                        var existingCheat = existingCheats.Cheats.FirstOrDefault(c => c.Name == cheat.Name);
-                        if (existingCheat != null)
-                            existingCheat.Contents = cheat.Contents;
-                        else
-                            existingCheats.Cheats.Add(cheat);
+                        tasks.Add(Task.Run(() =>
+                        {
+                            var existingCheat = existingCheats.Cheats.FirstOrDefault(c => c.Name == cheat.Name);
+                            if (existingCheat != null)
+                                existingCheat.Contents = cheat.Contents;
+                            else
+                                existingCheats.Cheats.Add(cheat);
+                        }));
                     }
+                    await Task.WhenAll(tasks);
                 }
 
                 // Write the ini with cheats in it
