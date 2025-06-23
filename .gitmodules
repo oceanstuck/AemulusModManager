@@ -1,0 +1,6 @@
+[submodule "Atlus-Script-Tools"]
+	path = Submodules/Atlus-Script-Tools
+	url = https://github.com/tge-was-taken/Atlus-Script-Tools.git
+[submodule "Submodules/Libellus-Event-Tools"]
+	path = Submodules/Libellus-Event-Tools
+	url = https://github.com/0HMyC/Libellus-Event-Tools.git

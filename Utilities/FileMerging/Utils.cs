@@ -63,7 +63,7 @@ namespace AemulusModManager.Utilities.FileMerging
 
         static Dictionary<string, GameCompilerInfo> compilerInfos = new Dictionary<string, GameCompilerInfo>()
         {
-            {"Persona 4 Golden", new GameCompilerInfo(LibraryLookup.GetLibrary("P4G"), AtlusEncoding.GetByName("P4"), FlowFormatVersion.Version1, MsgFormatVersion.Version1) },
+            {"Persona 4 Golden (PC 32-Bit)", new GameCompilerInfo(LibraryLookup.GetLibrary("P4G"), AtlusEncoding.GetByName("P4"), FlowFormatVersion.Version1, MsgFormatVersion.Version1) },
             {"Persona 4 Golden (Vita)", new GameCompilerInfo(LibraryLookup.GetLibrary("P4G"), AtlusEncoding.GetByName("P4"), FlowFormatVersion.Version1, MsgFormatVersion.Version1) },
             {"Persona 3 FES", new GameCompilerInfo(LibraryLookup.GetLibrary("P3F"), AtlusEncoding.GetByName("P3"), FlowFormatVersion.Version1, MsgFormatVersion.Version1) },
             {"Persona 5", new GameCompilerInfo(LibraryLookup.GetLibrary("P5"), AtlusEncoding.GetByName("P5"), FlowFormatVersion.Version3BigEndian, MsgFormatVersion.Version1BigEndian) },

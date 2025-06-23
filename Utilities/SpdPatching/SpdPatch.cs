@@ -23,7 +23,7 @@ namespace AemulusModManager
             foreach (string dir in ModList)
             {
                 Utilities.ParallelLogger.Log($"[INFO] Searching for/applying spd patches in {dir}...");
-                if (!Directory.Exists($@"{dir}\spdpatches"))
+                if (!Directory.Exists($@"{dir}/spdpatches"))
                 {
                     Utilities.ParallelLogger.Log($"[INFO] No spdpatches folder found in {dir}");
                     continue;
@@ -31,7 +31,7 @@ namespace AemulusModManager
 
                 var patchList = new List<SpdPatches>();
                 // Apply spd json patching
-                foreach (var t in Directory.GetFiles($@"{dir}\spdpatches", "*.spdp", SearchOption.AllDirectories))
+                foreach (var t in Directory.GetFiles($@"{dir}/spdpatches", "*.spdp", SearchOption.AllDirectories))
                 {
                     SpdPatches patches = null;
                     try
@@ -56,7 +56,7 @@ namespace AemulusModManager
                             // Copy over original file
                             if (!File.Exists(outputFile))
                             {
-                                var originalFile = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\{game}\{patch.SpdPath}";
+                                var originalFile = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/{game}/{patch.SpdPath}";
                                 if (File.Exists(originalFile))
                                 {
                                     Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
@@ -72,7 +72,7 @@ namespace AemulusModManager
                             Process process = new Process();
                             ProcessStartInfo startInfo = new ProcessStartInfo();
                             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\SpdPatcher\SPD Patcher.exe";
+                            startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Dependencies/SpdPatcher/SPD Patcher.exe";
                             startInfo.Arguments = $"\"{t}\" " + $"\"{outputFile}\" " + $"\"{outputFile}\"";
                             process.StartInfo = startInfo;
                             process.Start();

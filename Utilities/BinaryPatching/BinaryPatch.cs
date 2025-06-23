@@ -53,7 +53,7 @@ namespace AemulusModManager
                         foreach (var patch in patches.Patches)
                         {
                             var p4gArchive = String.Empty;
-                            if (game == "Persona 4 Golden")
+                            if (game == "Persona 4 Golden (PC 32-Bit)")
                             {
                                 if (useCpk)
                                     p4gArchive = $@"{Path.GetFileNameWithoutExtension(cpkLang)}\";

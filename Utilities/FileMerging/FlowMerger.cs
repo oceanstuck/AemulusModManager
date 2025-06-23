@@ -14,19 +14,19 @@ namespace AemulusModManager.Utilities.FileMerging
 
             List<string[]> compiledFiles = new List<string[]>();
 
-            foreach (string dir in ModList)
+            foreach (string mod in ModList)
             {
-                var flowFiles = Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
+                var flowFiles = Directory.EnumerateFiles(mod, "*.*", SearchOption.AllDirectories)
                     .Where(s => (s.ToLower().EndsWith(".flow") || s.ToLower().EndsWith(".bf")) && !s.ToLower().EndsWith(".bf.flow"));
 
-                string[] AemIgnore = File.Exists($@"{dir}\Ignore.aem") ? File.ReadAllLines($@"{dir}\Ignore.aem") : null;
+                string[] AemIgnore = File.Exists($@"{mod}\Ignore.aem") ? File.ReadAllLines($@"{mod}\Ignore.aem") : null;
 
                 foreach (string file in flowFiles)
                 {
                     string bf = Path.ChangeExtension(file, "bf");
-                    string filePath = Path.GetRelativePath(dir, bf);
+                    string filePath = Path.GetRelativePath(mod, bf);
                     var dataFolder = String.Empty;
-                    if (game == "Persona 4 Golden")
+                    if (game == "Persona 4 Golden (PC 32-Bit)")
                     {
                         dataFolder = filePath.Substring(0, filePath.IndexOf(Path.DirectorySeparatorChar));
                         filePath = filePath.Substring(filePath.IndexOf(Path.DirectorySeparatorChar) + 1);
@@ -42,7 +42,7 @@ namespace AemulusModManager.Utilities.FileMerging
                         // This is a standalone bf, add it so it can be used as a base
                         else
                         {
-                            string[] bfFile = { filePath, dir, bf };
+                            string[] bfFile = { filePath, mod, bf };
                             compiledFiles.Add(bfFile);
                             continue;
                         }
@@ -75,9 +75,9 @@ namespace AemulusModManager.Utilities.FileMerging
                             continue;
                         }
                     }
-                    if (!Utils.Compile(file, bf, game, language, Path.GetFileName(dir)))
+                    if (!Utils.Compile(file, bf, game, language, Path.GetFileName(mod)))
                         continue;
-                    string[] compiledFile = { filePath, dir, bf };
+                    string[] compiledFile = { filePath, mod, bf };
                     compiledFiles.Add(compiledFile);
                 }
             }

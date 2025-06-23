@@ -30,7 +30,7 @@ namespace AemulusModManager
             PAKPackCMD($@"unpack ""{archive}"" ""{tblDir}""");
         }
 
-        private static string exePath = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\PAKPack\PAKPack.exe";
+        private static string exePath = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Dependencies/PAKPack/PAKPack.exe";
 
         // Use PAKPack command
         private static void PAKPackCMD(string args)
@@ -54,7 +54,7 @@ namespace AemulusModManager
         private static void repackTbls(string tbl, string archive, string game)
         {
             string parent = null;
-            if (game == "Persona 4 Golden" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
+            if (game == "Persona 4 Golden (PC 32-Bit)" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
             {
                 parent = "battle";
                 if (Path.GetFileName(tbl).Equals("ITEMTBL.TBL"))
@@ -86,7 +86,7 @@ namespace AemulusModManager
             Utilities.ParallelLogger.Log("[INFO] Patching TBLs...");
             // Check if init_free exists and return if not
             string archive = null;
-            if (game == "Persona 4 Golden")
+            if (game == "Persona 4 Golden (PC 32-Bit)")
             {
                 if (useCpk)
                     archive = $@"{Path.GetFileNameWithoutExtension(cpkLang)}\init_free.bin";
@@ -378,7 +378,7 @@ namespace AemulusModManager
                         else
                         {
                             string unpackedTblPath = null;
-                            if (game == "Persona 4 Golden" || game == "Persona 4 Golden (Vita)")
+                            if (game == "Persona 4 Golden (PC 32-Bit)" || game == "Persona 4 Golden (Vita)")
                                 unpackedTblPath = $@"{tblDir}\battle\{tblName}";
                             else
                                 unpackedTblPath = $@"{tblDir}\table\{tblName}";
@@ -431,7 +431,7 @@ namespace AemulusModManager
                             // Keep track of which TBL's were edited and get sections
                             if (!tables.Exists(x => x.tableName == patch.tbl))
                             {
-                                if ((game == "Persona 4 Golden" && !p4gTables.Contains(patch.tbl))
+                                if ((game == "Persona 4 Golden (PC 32-Bit)" && !p4gTables.Contains(patch.tbl))
                                     || (game == "Persona 4 Golden (Vita)" && !p4gTables.Contains(patch.tbl))
                                     || (game == "Persona 3 FES" && !p3fTables.Contains(patch.tbl))
                                     || (game == "Persona 5" && !p5Tables.Contains(patch.tbl))
@@ -502,7 +502,7 @@ namespace AemulusModManager
                                         }
                                     }
                                 }
-                                else if (game == "Persona 4 Golden" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
+                                else if (game == "Persona 4 Golden (PC 32-Bit)" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
                                     tablePath = patch.tbl.Equals("ITEMTBL") ? $@"{tblDir}\init\itemtbl.bin" : $@"{tblDir}\battle\{patch.tbl}.TBL";
                                 else if (game == "Persona 5" || game == "Persona 5 Royal (PS4)")
                                     tablePath = $@"{tblDir}\table\{patch.tbl}.TBL";
@@ -536,7 +536,7 @@ namespace AemulusModManager
                         path = $@"{modDir}\BTL\BATTLE\{table.tableName}.TBL";
                     else if (game == "Persona 5 Royal (Switch)")
                         path = table.tableName.Equals("NAME", StringComparison.InvariantCultureIgnoreCase) ? $@"{modDir}\{cpkLang}\BATTLE\TABLE\{table.tableName}.TBL" : $@"{modDir}\BASE\BATTLE\TABLE\{table.tableName}.TBL";
-                    else if (game == "Persona 4 Golden" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
+                    else if (game == "Persona 4 Golden (PC 32-Bit)" || game == "Persona 4 Golden (Vita)" || game == "Persona 3 Portable")
                         path = table.tableName.Equals("ITEMTBL") ? $@"{tblDir}\init\itemtbl.bin" : $@"{tblDir}\battle\{table.tableName}.TBL";
                     else if (game == "Persona 5" || game == "Persona 5 Royal (PS4)")
                         path = $@"{tblDir}\table\{table.tableName}.TBL";
@@ -955,7 +955,7 @@ namespace AemulusModManager
             {
                 using (BinaryWriter bw = new BinaryWriter(fileStream))
                 {
-                    if (((game == "Persona 4 Golden" || game == "Persona 4 Golden (Vita)") && Path.GetFileName(path).Equals("itemtbl.bin", StringComparison.InvariantCultureIgnoreCase))
+                    if (((game == "Persona 4 Golden (PC 32-Bit)" || game == "Persona 4 Golden (Vita)") && Path.GetFileName(path).Equals("itemtbl.bin", StringComparison.InvariantCultureIgnoreCase))
                         || (game == "Persona Q" || game == "Persona Q2"))
                         bw.Write(sections[0].data);
                     else

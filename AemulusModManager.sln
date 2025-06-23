@@ -1,4 +1,3 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32414.318
@@ -6,6 +5,10 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AemulusModManager", "AemulusModManager.csproj", "{C36E486D-E952-4E70-A55A-C3DF388A47C0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0E9DB59F-7F4E-49F5-94E2-68286B10885F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AtlusScriptLibrary", "Submodules\Atlus-Script-Tools\Source\AtlusScriptLibrary\AtlusScriptLibrary.csproj", "{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Libellus Library", "Submodules\Libellus-Event-Tools\Libellus Library\Libellus Library.csproj", "{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +32,30 @@ Global
 		{C36E486D-E952-4E70-A55A-C3DF388A47C0}.Release|x64.Build.0 = Release|x64
 		{C36E486D-E952-4E70-A55A-C3DF388A47C0}.Release|x86.ActiveCfg = Release|x86
 		{C36E486D-E952-4E70-A55A-C3DF388A47C0}.Release|x86.Build.0 = Release|x86
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|x64.Build.0 = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Debug|x86.Build.0 = Debug|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|x64.ActiveCfg = Release|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|x64.Build.0 = Release|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|x86.ActiveCfg = Release|Any CPU
+		{FE89E52F-0D3E-F7E3-2D82-D621D24D9B20}.Release|x86.Build.0 = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|x64.Build.0 = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Debug|x86.Build.0 = Debug|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|x64.ActiveCfg = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|x64.Build.0 = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|x86.ActiveCfg = Release|Any CPU
+		{5D629DA3-3844-6C1B-6D29-09AD1F8245AE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -41,7 +41,7 @@ namespace AemulusModManager
         public ConfigP1PSP p1pspConfig;
         public ConfigP3F p3fConfig;
         public ConfigP3P p3pConfig;
-        public ConfigP4G p4gConfig;
+        public ConfigP4G32 p4gConfig;
         public ConfigP4GVita p4gVitaConfig;
         public ConfigP5 p5Config;
         public ConfigP5R p5rConfig;
@@ -243,7 +243,7 @@ namespace AemulusModManager
                 config = new AemulusConfig();
                 p5Config = new ConfigP5();
                 p5sConfig = new ConfigP5S();
-                p4gConfig = new ConfigP4G();
+                p4gConfig = new ConfigP4G32();
                 p3fConfig = new ConfigP3F();
                 p3pConfig = new ConfigP3P();
                 p4gVitaConfig = new ConfigP4GVita();
@@ -265,7 +265,7 @@ namespace AemulusModManager
                 config.p1pspConfig = p1pspConfig;
 
                 // Initialize xml serializers
-                XmlSerializer oldConfigSerializer = new XmlSerializer(typeof(Config));
+                XmlSerializer oldConfigSerializer = new XmlSerializer(typeof(LegacyConfig));
                 xs = new XmlSerializer(typeof(AemulusConfig));
                 xp = new XmlSerializer(typeof(Packages));
                 xsp = new XmlSerializer(typeof(Metadata));
@@ -297,24 +297,18 @@ namespace AemulusModManager
                             // Call the Deserialize method and cast to the object type.
                             if (file == $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Config.xml")
                             {
-                                Config oldConfig = (Config)oldConfigSerializer.Deserialize(streamWriter);
-                                p4gConfig.reloadedPath = oldConfig.reloadedPath;
-                                p4gConfig.exePath = oldConfig.exePath;
-                                p4gConfig.modDir = oldConfig.modDir;
-                                p4gConfig.emptySND = oldConfig.emptySND;
-                                p4gConfig.cpkLang = oldConfig.cpkLang;
-                                p4gConfig.useCpk = oldConfig.useCpk;
-
+                                LegacyConfig oldConfig = (LegacyConfig)oldConfigSerializer.Deserialize(streamWriter);
+                                p4gConfig.FromLegacyConfig(oldConfig);
                                 config.p4gConfig = p4gConfig;
                             }
                             else
                                 config = (AemulusConfig)xs.Deserialize(streamWriter);
                             game = config.game;
                             // Default to P4G
-                            if (String.IsNullOrEmpty(game))
+                            if (String.IsNullOrEmpty(game) || game == "Persona 4 Golden")
                             {
-                                game = "Persona 4 Golden";
-                                config.game = "Persona 4 Golden";
+                                game = "Persona 4 Golden (PC 32-Bit)";
+                                config.game = "Persona 4 Golden (PC 32-Bit)";
                             }
                             if (game == "Persona 5 Royal")
                             {
@@ -373,7 +367,7 @@ namespace AemulusModManager
 
                             switch (game)
                             {
-                                case "Persona 4 Golden":
+                                case "Persona 4 Golden (PC 32-Bit)":
                                     // Default
                                     if (cpkLang == null)
                                     {
@@ -629,6 +623,24 @@ namespace AemulusModManager
                         Directory.Move($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Config\Persona 5 Royal", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Config\Persona 5 Royal (PS4)");
                     }
 
+                    // Move Persona 4 Golden to Persona 4 Golden (PC 32-Bit)
+                    if (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Packages/Persona 4 Golden"))
+                    {
+                        Utilities.ParallelLogger.Log($@"[INFO] Transferring {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\Persona 4 Golden to {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\Persona 4 Golden (PC 32-Bit). It may take awhile");
+                        Directory.Move($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Packages/Persona 4 Golden", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Packages/Persona 4 Golden (PC 32-Bit)");
+                    }
+                    if (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/Persona 4 Golden"))
+                    {
+
+                        Utilities.ParallelLogger.Log($@"[INFO] Transferring {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden to {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 4 Golden (PC 32-Bit). It may take awhile");
+                        Directory.Move($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/Persona 4 Golden", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Original/Persona 4 Golden (PC 32-Bit)");
+                    }
+                    if (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Config/Persona 4 Golden"))
+                    {
+                        Utilities.ParallelLogger.Log($@"[INFO] Transferring {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Config\Persona 4 Golden to {Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Config\Persona 4 Golden (PC 32-Bit)");
+                        Directory.Move($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Config/Persona 4 Golden", $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}/Config/Persona 4 Golden (PC 32-Bit)");
+                    }
+
                     switch (game)
                     {
                         case "Persona 1 (PSP)":
@@ -640,7 +652,7 @@ namespace AemulusModManager
                         case "Persona 3 Portable":
                             GameBox.SelectedIndex = 2;
                             break;
-                        case "Persona 4 Golden":
+                        case "Persona 4 Golden (PC 32-Bit)":
                             GameBox.SelectedIndex = 3;
                             break;
                         case "Persona 4 Golden (Vita)":
@@ -696,7 +708,7 @@ namespace AemulusModManager
                         case "Persona 3 Portable":
                             config.p3pConfig.loadout = selectedLoadout;
                             break;
-                        case "Persona 4 Golden":
+                        case "Persona 4 Golden (PC 32-Bit)":
                             config.p4gConfig.loadout = selectedLoadout;
                             break;
                         case "Persona 4 Golden (Vita)":
@@ -803,9 +815,9 @@ namespace AemulusModManager
                 }
                 else // No config found
                 {
-                    game = "Persona 4 Golden";
-                    config.game = "Persona 4 Golden";
-                    lastGame = "Persona 4 Golden";
+                    game = "Persona 4 Golden (PC 32-Bit)";
+                    config.game = "Persona 4 Golden (PC 32-Bit)";
+                    lastGame = "Persona 4 Golden (PC 32-Bit)";
                     cpkLang = "data_e.cpk";
                     config.p4gConfig.cpkLang = "data_e.cpk";
                     foreach (var button in buttons)
@@ -823,7 +835,7 @@ namespace AemulusModManager
                     loadoutHandled = false;
                 }
 
-                if (game == "Persona 4 Golden" && !String.IsNullOrEmpty(config.p4gConfig.modDir))
+                if (game == "Persona 4 Golden (PC 32-Bit)" && !String.IsNullOrEmpty(config.p4gConfig.modDir))
                     modPath = config.p4gConfig.modDir;
                 else if (game == "Persona 4 Golden (Vita)" && !String.IsNullOrEmpty(config.p4gVitaConfig.modDir))
                     modPath = config.p4gVitaConfig.modDir;
@@ -1067,7 +1079,7 @@ namespace AemulusModManager
             {
                 switch(game)
                 {
-                    case "Persona 4 Golden":
+                    case "Persona 4 Golden (PC 32-Bit)":
                         await PacUnpacker.Unpack(directory, cpkLang);
                         break;
                     case "Persona 3 FES":
@@ -1077,7 +1089,7 @@ namespace AemulusModManager
                         await PacUnpacker.UnpackP5CPK(directory);
                         break;
                     case "Persona 5 Strikers":
-                        await Merger.Backup(directory);
+                        await KtMerger.Backup(directory);
                         break;
                     case "Persona 3 Portable":
                         await PacUnpacker.UnzipAndUnpackCPK(directory);
@@ -1124,7 +1136,7 @@ namespace AemulusModManager
                     lastUnpacked = aemulusVersion;
                     switch (game)
                     {
-                        case "Persona 4 Golden":
+                        case "Persona 4 Golden (PC 32-Bit)":
                             config.p4gConfig.lastUnpacked = lastUnpacked;
                             break;
                         case "Persona 3 FES":
@@ -1188,7 +1200,7 @@ namespace AemulusModManager
                     return;
                 }
                 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                if (game == "Persona 4 Golden")
+                if (game == "Persona 4 Golden (PC 32-Bit)")
                 {
                     if (!File.Exists(gamePath))
                     {
@@ -1367,7 +1379,7 @@ namespace AemulusModManager
 
         private void ConfigWdwCommand()
         {
-            if (game == "Persona 4 Golden")
+            if (game == "Persona 4 Golden (PC 32-Bit)")
             {
                 ConfigWindowP4G cWindow = new ConfigWindowP4G(this) { Owner = this };
                 cWindow.DataContext = this;
@@ -1653,7 +1665,7 @@ namespace AemulusModManager
                     }
                     else
                     {
-                        if (game == "Persona 4 Golden" && !(Directory.Exists($@"{package}\data")
+                        if (game == "Persona 4 Golden (PC 32-Bit)" && !(Directory.Exists($@"{package}\data")
                         || Directory.Exists($@"{package}\data") || Directory.Exists($@"{package}\data_e")
                         || Directory.Exists($@"{package}\data_c") || Directory.Exists($@"{package}\data_k")
                         || Directory.Exists($@"{package}\data00000") || Directory.Exists($@"{package}\data00001")
@@ -1854,7 +1866,7 @@ namespace AemulusModManager
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0x6e, 0xb0, 0xf7));
                     else if (game == "Persona 1 (PSP)")
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0xb6, 0x83, 0xfc));
-                    else if (game == "Persona 4 Golden")
+                    else if (game == "Persona 4 Golden (PC 32-Bit)")
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0xf5, 0xe6, 0x3d));
                     else if (game == "Persona 5 Strikers")
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0x25, 0xf4, 0xb8));
@@ -2010,7 +2022,7 @@ namespace AemulusModManager
                 string selectedPath = null;
                 if (string.IsNullOrEmpty(gamePath))
                 {
-                    if (game == "Persona 4 Golden")
+                    if (game == "Persona 4 Golden (PC 32-Bit)")
                     {
                         selectedPath = selectExe("Select P4G.exe to unpack", ".exe");
                         if (selectedPath != null && Path.GetFileName(selectedPath) == "P4G.exe")
@@ -2225,7 +2237,7 @@ namespace AemulusModManager
                     lastUnpacked = aemulusVersion;
                     switch (game)
                     {
-                        case "Persona 4 Golden":
+                        case "Persona 4 Golden (PC 32-Bit)":
                             config.p4gConfig.lastUnpacked = lastUnpacked;
                             break;
                         case "Persona 3 FES":
@@ -2261,7 +2273,7 @@ namespace AemulusModManager
             if (game == "Persona 5 Strikers")
             {
                 bool backedUp = true;
-                foreach (var file in Merger.original_data)
+                foreach (var file in KtMerger.original_data)
                 {
                     if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\{game}\motor_rsc\data\{file}"))
                     {
@@ -2284,7 +2296,7 @@ namespace AemulusModManager
                     await pacUnpack(modPath);
                     fromMain = false;
 
-                    foreach (var file in Merger.original_data)
+                    foreach (var file in KtMerger.original_data)
                     {
                         if (!File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\{game}\motor_rsc\data\{file}"))
                         {
@@ -2338,7 +2350,7 @@ namespace AemulusModManager
                     {
                         packages.Add($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\{game}\{m.path}");
                         Utilities.ParallelLogger.Log($@"[INFO] Using {m.path} in loadout");
-                        if (game == "Persona 4 Golden" && (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\{game}\{m.path}\{Path.GetFileNameWithoutExtension(cpkLang)}")
+                        if (game == "Persona 4 Golden (PC 32-Bit)" && (Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\{game}\{m.path}\{Path.GetFileNameWithoutExtension(cpkLang)}")
                             || Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\{game}\{m.path}\movie") || Directory.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Packages\{game}\{m.path}\preappfile")) && !useCpk)
                         {
                             Utilities.ParallelLogger.Log($"[WARNING] {m.path} is using CPK folder paths, setting Use CPK Structure to true");
@@ -2467,7 +2479,7 @@ namespace AemulusModManager
                     else if (game != "Persona 5 Strikers")
                         await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
                     else
-                        Merger.Restart(path);
+                        await KtMerger.Restart(path);
                     Utilities.ParallelLogger.Log("[INFO] Finished emptying output folder!");
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -2560,11 +2572,13 @@ namespace AemulusModManager
 
                     if (game != "Persona 5 Strikers" && game != "Persona 1 (PSP)")
                     {
-                        var language = game.Contains("Persona 5 Royal") ? config.p5rConfig.language : null;
+                        string language = null;
+                        if (game == "Persona 5 Royal (PS4)") { language = config.p5rConfig.language; }
+                        if (game == "Persona 5 Royal (Switch)") { language = config.p5rSwitchConfig.language; }
+
                         // Merge flow, bmd and pm1 files
-                        FlowMerger.Merge(packages, game, language);
-                        BmdMerger.Merge(packages, game, language);
-                        PM1Merger.Merge(packages, game, language);
+                        var scriptMerger = new AtlusScriptMerger(game, path, language);
+                        await scriptMerger.FindImports(packages);
 
                         await Task.Run(async () =>
                         {
@@ -2575,21 +2589,27 @@ namespace AemulusModManager
                                 cheats = config.p3fConfig.cheatsPath;
                                 cheatsWS = config.p3fConfig.cheatsWSPath;
                             }
+
                             string textures = null;
-                            if (game == "Persona 3 FES" || game == "Persona 3 Portable")
+                            if (game == "Persona 3 FES")
                                 textures = config.p3fConfig.texturesPath;
+                            if (game == "Persona 3 Portable")
+                                textures = config.p3pConfig.texturesPath;
+
                             await binMerge.Restart(path, emptySND, game, cpkLang, cheats, cheatsWS);
-                            await AwbMerger.Merge(packages, game, path);
+                            var mergeTasks = new List<Task>() { AwbMerger.Merge(packages, game, path), scriptMerger.MergeBfs(), scriptMerger.MergeBmds(), scriptMerger.MergePm1s() };
+                            await Task.WhenAll(mergeTasks);
                             await binMerge.CopyAndUnpackBins(packages, path, useCpk, cpkLang, game);
+
                             // Patch files before merging
-                            if (packages.Exists(x => Directory.Exists($@"{x}\binarypatches")))
+                            if (packages.Exists(x => Directory.Exists($@"{x}/binarypatches")))
                                 BinaryPatcher.Patch(packages, path, useCpk, cpkLang, game);
-                            if (packages.Exists(x => Directory.Exists($@"{x}\spdpatches")))
+                            if (packages.Exists(x => Directory.Exists($@"{x}/spdpatches")))
                                 SpdPatcher.Patch(packages, path, useCpk, cpkLang, game);
                             await binMerge.Merge(path, game);
                         });
                         // Only run if tblpatches exists
-                        if (packages.Exists(x => Directory.Exists($@"{x}\tblpatches")))
+                        if (packages.Exists(x => Directory.Exists($@"{x}/tblpatches")))
                         {
                             var tbllanguage = cpkLang;
                             if (game == "Persona 5 Royal (Switch)")
@@ -2677,7 +2697,7 @@ namespace AemulusModManager
                             }
                         }
 
-                        if (game == "Persona 4 Golden" && packages.Exists(x => Directory.Exists($@"{x}\preappfile")))
+                        if (game == "Persona 4 Golden (PC 32-Bit)" && packages.Exists(x => Directory.Exists($@"{x}\preappfile")))
                         {
                             PreappfileAppend.Append(Path.GetDirectoryName(path), cpkLang);
                             PreappfileAppend.Validate(Path.GetDirectoryName(path), cpkLang);
@@ -2697,7 +2717,7 @@ namespace AemulusModManager
                         // Restore the bmd and pm1 backups
                         Utils.RestoreBackups(packages);
 
-                        if (game == "Persona 4 Golden" && File.Exists($@"{modPath}\patches\BGME_Base.patch") && File.Exists($@"{modPath}\patches\BGME_Main.patch"))
+                        if (game == "Persona 4 Golden (PC 32-Bit)" && File.Exists($@"{modPath}\patches\BGME_Base.patch") && File.Exists($@"{modPath}\patches\BGME_Main.patch"))
                             Utilities.ParallelLogger.Log("[WARNING] BGME_Base.patch and BGME_Main.patch found in your patches folder which will result in no music in battles.");
                     }
                     else if (game == "Persona 1 (PSP)")
@@ -2783,13 +2803,13 @@ namespace AemulusModManager
                     }
                     else
                     {
-                        Merger.Restart(path);
-                        Merger.Merge(packages, path);
-                        Merger.Patch(path);
+                        await KtMerger.Restart(path);
+                        await KtMerger.Merge(packages, path);
+                        await KtMerger.Patch(path);
                     }
                     if(game== "Persona 3 FES")
                     {
-                        Merger.UpperAll(path);
+                        KtMerger.UpperAll(path);
                     }
                     buildTimer.Stop();
                     Utilities.ParallelLogger.Log($"[INFO] Using output directory with length {modPath.Length}: {modPath}!");
@@ -3269,7 +3289,7 @@ namespace AemulusModManager
                         }
                         break;
                     case 3:
-                        game = "Persona 4 Golden";
+                        game = "Persona 4 Golden (PC 32-Bit)";
                         modPath = config.p4gConfig.modDir;
                         selectedLoadout = config.p4gConfig.loadout;
                         gamePath = config.p4gConfig.exePath;
@@ -3686,7 +3706,7 @@ namespace AemulusModManager
                     case "Persona 3 FES":
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x58, 0x7b));
                         break;
-                    case "Persona 4 Golden":
+                    case "Persona 4 Golden (PC 32-Bit)":
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0x7a, 0x73, 0x1e));
                         break;
                     case "Persona 5":
@@ -3728,7 +3748,7 @@ namespace AemulusModManager
                     case "Persona 3 FES":
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0x6e, 0xb0, 0xf7));
                         break;
-                    case "Persona 4 Golden":
+                    case "Persona 4 Golden (PC 32-Bit)":
                         button.Foreground = new SolidColorBrush(Color.FromRgb(0xf5, 0xe6, 0x3d));
                         break;
                     case "Persona 5":
@@ -4150,7 +4170,7 @@ namespace AemulusModManager
                         case "Persona 3 FES":
                             config.p3fConfig.loadout = lastXml;
                             break;
-                        case "Persona 4 Golden":
+                        case "Persona 4 Golden (PC 32-Bit)":
                             config.p4gConfig.loadout = lastXml;
                             break;
                         case "Persona 5":
@@ -4358,7 +4378,7 @@ namespace AemulusModManager
                         game = "Persona 3 FES";
                         break;
                     case GameFilter.P4G:
-                        game = "Persona 4 Golden";
+                        game = "Persona 4 Golden (PC 32-Bit)";
                         break;
                     case GameFilter.P5:
                         game = "Persona 5";
@@ -4403,7 +4423,7 @@ namespace AemulusModManager
                     game = "Persona 3 FES";
                     break;
                 case GameFilter.P4G:
-                    game = "Persona 4 Golden";
+                    game = "Persona 4 Golden (PC 32-Bit)";
                     break;
                 case GameFilter.P5:
                     game = "Persona 5";
@@ -5324,7 +5344,7 @@ namespace AemulusModManager
                     case "Persona 3 FES":
                         config.p3fConfig.loadout = selectedLoadout;
                         break;
-                    case "Persona 4 Golden":
+                    case "Persona 4 Golden (PC 32-Bit)":
                         config.p4gConfig.loadout = selectedLoadout;
                         break;
                     case "Persona 5":

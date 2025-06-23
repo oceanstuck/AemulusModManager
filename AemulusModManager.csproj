@@ -94,15 +94,6 @@
     <None Update="Dependencies\SpdPatcher\SPD Patcher.runtimeconfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Libraries\Persona5Royal\Modules\Common\Enums.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Libraries\Persona5\Modules\Custom\Enums.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Libraries\Persona5\Modules\Custom\Functions.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Dependencies\FilteredCpkCsv\filtered_data.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -506,20 +497,33 @@
     </ContentWithTargetPath>
   </ItemGroup>
   <ItemGroup>
-    <ContentWithTargetPath Include="Dependencies\PM1MessageScriptEditor\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Dependencies\PM1MessageScriptEditor\%(RecursiveDir)\%(Filename)%(Extension)</TargetPath>
-    </ContentWithTargetPath>
-  </ItemGroup>
-  <ItemGroup>
+    <Compile Remove="Charsets\**" />
+    <Compile Remove="Dependencies\AtlusScriptCompiler\**" />
+    <Compile Remove="Dependencies\PM1MessageScriptEditor\**" />
+    <Compile Remove="Libraries\**" />
     <Compile Remove="Submodules\**" />
+    <EmbeddedResource Remove="Charsets\**" />
+    <EmbeddedResource Remove="Dependencies\AtlusScriptCompiler\**" />
+    <EmbeddedResource Remove="Dependencies\PM1MessageScriptEditor\**" />
+    <EmbeddedResource Remove="Libraries\**" />
     <EmbeddedResource Remove="Submodules\**" />
+    <None Remove="Charsets\**" />
+    <None Remove="Dependencies\AtlusScriptCompiler\**" />
+    <None Remove="Dependencies\PM1MessageScriptEditor\**" />
+    <None Remove="Libraries\**" />
     <None Remove="Submodules\**" />
+    <Page Remove="Charsets\**" />
+    <Page Remove="Dependencies\AtlusScriptCompiler\**" />
+    <Page Remove="Dependencies\PM1MessageScriptEditor\**" />
+    <Page Remove="Libraries\**" />
     <Page Remove="Submodules\**" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Antlr4.Runtime.dll" />
+    <None Remove="Antlr4.Runtime.xml" />
     <None Remove="Assets\pq.png" />
     <None Remove="Assets\pqicon.png" />
+    <None Remove="AtlusScriptLibrary.dll" />
   </ItemGroup>
   <ItemGroup>
     <Page Remove="Windows\App.xaml" />
@@ -576,19 +580,12 @@
     <Resource Include="Assets\p5r.png" />
     <Resource Include="Assets\p5s.png" />
     <Resource Include="Assets\pq2.png" />
-    <None Update="Antlr4.Runtime.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Antlr4.Runtime.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <Resource Include="Assets\p1psp.png" />
     <Resource Include="Assets\p1pspicon.png" />
-    <Content Include="AtlusScriptLibrary.dll" />
     <Content Include="Dependencies\CpkMakeC\CpkBinder.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -607,10 +604,6 @@
     <Content Include="Dependencies\mkisofs\mkisofs.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Dependencies\PM1MessageScriptEditor\Antlr4.Runtime.dll" />
-    <Content Include="Dependencies\PM1MessageScriptEditor\AtlusScriptLibrary.dll" />
-    <Content Include="Dependencies\PM1MessageScriptEditor\Newtonsoft.Json.dll" />
-    <Content Include="Dependencies\PM1MessageScriptEditor\PM1MessageScriptEditor.exe" />
     <Content Include="Dependencies\rdb_tool.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -693,9 +686,8 @@
     <PackageReference Include="System.Text.Json" Version="7.0.3" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="AtlusScriptLibrary">
-      <HintPath>AtlusScriptLibrary.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="Submodules\Atlus-Script-Tools\Source\AtlusScriptLibrary\AtlusScriptLibrary.csproj" />
+    <ProjectReference Include="Submodules\Libellus-Event-Tools\Libellus Library\Libellus Library.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">
@@ -703,6 +695,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Submodules\" />
   </ItemGroup>
   <ProjectExtensions />
 </Project>

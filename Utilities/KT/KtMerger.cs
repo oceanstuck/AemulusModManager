@@ -11,28 +11,8 @@ using System.Threading.Tasks;
 
 namespace AemulusModManager.Utilities.KT
 {
-    public static class Merger
+    public static class KtMerger
     {
-        public static void DeleteDirectory(string path)
-        {
-            foreach (string directory in Directory.GetDirectories(path))
-            {
-                DeleteDirectory(directory);
-            }
-            try
-            {
-                Directory.Delete(path, true);
-            }
-            catch (IOException)
-            {
-                Directory.Delete(path, true);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                Directory.Delete(path, true);
-            }
-        }
-
         public static string[] original_data = new string[] { "0x0018d31b.file", "0x272c6efb.file", "0x282630a0.file",
                 "0x321d1476.file", "0x37552941.file", "0x3ab77c3b.file", "0x468421e2.file", "0x55b31a83.file",
                 "0x5af9ec1e.file", "0x677fed08.file", "0x8a4bdbd7.file", "0x99596bfb.file", "0x9bdb529c.file",
@@ -84,7 +64,7 @@ namespace AemulusModManager.Utilities.KT
 
             return checksumString;
         }
-        public static void Restart(string modPath)
+        public static async Task Restart(string modPath)
         {
             ParallelLogger.Log($"[INFO] Restoring directory to original state...");
             // Just in case its missing for some reason
@@ -122,38 +102,48 @@ namespace AemulusModManager.Utilities.KT
             });
 
             // Copy over original files that may have accidentally been deleted
+            var restoreTasks = new List<Task>();
             foreach (var file in original_data)
             {
-                if (!File.Exists($@"{modPath}\data\{file}") && File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}"))
+                restoreTasks.Add(Task.Run(() =>
                 {
-                    ParallelLogger.Log($"[INFO] Restoring {file}...");
+                    if (!File.Exists($@"{modPath}\data\{file}") && File.Exists($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}"))
+                    {
+                        ParallelLogger.Log($"[INFO] Restoring {file}...");
+                        try
+                        {
+                            File.Copy($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}", $@"{modPath}\data\{file}", true);
+                        }
+                        catch (Exception e)
+                        {
+                            ParallelLogger.Log($"[ERROR] Couldn't copy over {file} ({e.Message})");
+                        }
+                    }
+                }));
+            }
+            await Task.WhenAll(restoreTasks);
+
+            // Copy over backed up original rdbs
+            var revertTasks = new List<Task>();
+            foreach (var file in Directory.GetFiles(modPath, "*.rdb"))
+            {
+                revertTasks.Add(Task.Run(() =>
+                {
+                    ParallelLogger.Log($@"[INFO] Reverting {file} to original...");
                     try
                     {
-                        File.Copy($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\data\{file}", $@"{modPath}\data\{file}", true);
+                        File.Copy($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\{Path.GetFileName(file)}", file, true);
                     }
                     catch (Exception e)
                     {
-                        ParallelLogger.Log($"[ERROR] Couldn't copy over {file} ({e.Message})");
+                        ParallelLogger.Log($"[ERROR] Couldn't overwrite {file} ({e.Message})");
                     }
-                }
+                }));
             }
-
-            // Copy over backed up original rdbs
-            foreach (var file in Directory.GetFiles(modPath, "*.rdb"))
-            {
-                ParallelLogger.Log($@"[INFO] Reverting {file} to original...");
-                try
-                {
-                    File.Copy($@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Original\Persona 5 Strikers\motor_rsc\{Path.GetFileName(file)}", file, true);
-                }
-                catch (Exception e)
-                {
-                    ParallelLogger.Log($"[ERROR] Couldn't overwrite {file} ({e.Message})");
-                }
-            }
+            await Task.WhenAll(revertTasks);
 
         }
-        public static void Merge(List<string> ModList, string modDir)
+        public static async Task Merge(List<string> ModList, string modDir)
         {
             foreach (var mod in ModList)
             {
@@ -193,29 +183,33 @@ namespace AemulusModManager.Utilities.KT
                 }
 
                 // Copy over .files, hashing them when neccessary
+                var tasks = new List<Task>();
                 foreach (var file in Directory.GetFiles($@"{mod}\data", "*", SearchOption.AllDirectories))
                 {
-                    string fileName = Path.GetFileName(file);
-                    if (Path.GetExtension(file).ToLower() != ".file")
-                        fileName = Hash(Path.GetFileName(file));
+                    tasks.Add(Task.Run(() =>
+                    {
+                        string fileName = Path.GetFileName(file);
+                        if (Path.GetExtension(file).ToLower() != ".file")
+                            fileName = Hash(Path.GetFileName(file));
                         ParallelLogger.Log($@"[INFO] Copying over {file} to {modDir}\data\{fileName}");
-                    try
-                    {
-                        File.Copy(file, $@"{modDir}\data\{fileName.ToLower()}", true);
-                    }
-                    catch (Exception e)
-                    {
-                        ParallelLogger.Log($"[ERROR] Couldn't copy over {file} ({e.Message})");
-                    }
+                        try
+                        {
+                            File.Copy(file, $@"{modDir}\data\{fileName.ToLower()}", true);
+                        }
+                        catch (Exception e)
+                        {
+                            ParallelLogger.Log($"[ERROR] Couldn't copy over {file} ({e.Message})");
+                        }
+                    }));
                 }
+                await Task.WhenAll(tasks);
             }
 
         }
 
-        public static void Patch(string modDir)
+        public static async Task Patch(string modDir)
         {
             ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.CreateNoWindow = true;
             startInfo.FileName = $@"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)}\Dependencies\rdb_tool.exe";
             if (!File.Exists(startInfo.FileName))
             {
@@ -223,25 +217,32 @@ namespace AemulusModManager.Utilities.KT
                 return;
             }
 
+            startInfo.CreateNoWindow = true;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             startInfo.RedirectStandardOutput = true;
             startInfo.UseShellExecute = false;
+
+            var tasks = new List<Task>();
             foreach (var rdb in Directory.GetFiles(modDir, "*.rdb"))
             {
-                startInfo.Arguments = $@"""{rdb}"" ""{rdb}""";
-                ParallelLogger.Log($"[INFO] Patching {rdb}...");
-                using (Process process = new Process())
+                tasks.Add(Task.Run(() =>
                 {
-                    process.StartInfo = startInfo;
-                    process.Start();
-                    while (!process.HasExited)
+                    ParallelLogger.Log($"[INFO] Patching {rdb}...");
+                    using (Process process = new Process())
                     {
-                        string text = process.StandardOutput.ReadLine();
-                        if (text != "" && text != null)
-                            ParallelLogger.Log($"[INFO] {text}");
+                        process.StartInfo = startInfo;
+                        process.StartInfo.Arguments = $@"""{rdb}"" ""{rdb}""";
+                        process.Start();
+                        while (!process.HasExited)
+                        {
+                            string text = process.StandardOutput.ReadLine();
+                            if (text != "" && text != null)
+                                ParallelLogger.Log($"[INFO] {text}");
+                        }
                     }
-                }
+                }));
             }
+            await Task.WhenAll(tasks);
         }
 
         public static void UpperAll(string modDir)

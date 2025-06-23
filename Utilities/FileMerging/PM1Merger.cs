@@ -21,7 +21,7 @@ namespace AemulusModManager.Utilities.FileMerging
                 {
                     string filePath = Path.GetRelativePath(dir, file);
                     var dataFolder = String.Empty;
-                    if (game == "Persona 4 Golden")
+                    if (game == "Persona 4 Golden (PC 32-Bit)")
                     {
                         dataFolder = filePath.Substring(0, filePath.IndexOf(Path.DirectorySeparatorChar));
                         filePath = filePath.Substring(filePath.IndexOf(Path.DirectorySeparatorChar) + 1);

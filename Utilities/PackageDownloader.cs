@@ -44,7 +44,7 @@ namespace AemulusModManager.Utilities
                     gameName = "Persona 3 Portable";
                     break;
                 case GameFilter.P4G:
-                    gameName = "Persona 4 Golden";
+                    gameName = "Persona 4 Golden (PC 32-Bit)";
                     break;
                 case GameFilter.P4GVita:
                     gameName = "Persona 4 Golden (Vita)";
@@ -118,7 +118,7 @@ namespace AemulusModManager.Utilities
                         switch (gameName)
                         {
                             case "Persona 4 Golden PC (32 Bit)":
-                                gameName = "Persona 4 Golden";
+                                gameName = "Persona 4 Golden (PC 32-Bit)";
                                 break;
                             case "Persona 3 Portable (PSP)":
                                 gameName = "Persona 3 Portable";
