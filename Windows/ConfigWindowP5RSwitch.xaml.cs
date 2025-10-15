@@ -35,6 +35,8 @@ namespace AemulusModManager
             DeleteBox.IsChecked = main.config.p5rSwitchConfig.deleteOldVersions;
             UpdateAllBox.IsChecked = main.config.p5rSwitchConfig.updateAll;
             UpdateBox.IsChecked = main.config.p5rSwitchConfig.updatesEnabled;
+            LooseFileBox.IsChecked = main.config.p5rSwitchConfig.loadLooseFiles;
+
             switch (main.config.p5rSwitchConfig.language)
             {
                 case "English":
@@ -51,6 +53,18 @@ namespace AemulusModManager
                     break;
                 case "Spanish":
                     LanguageBox.SelectedIndex = 4;
+                    break;
+                case "Japanese":
+                    LanguageBox.SelectedIndex = 5;
+                    break;
+                case "Korean":
+                    LanguageBox.SelectedIndex = 6;
+                    break;
+                case "Chinese (Simplified)":
+                     LanguageBox.SelectedIndex = 7;
+                    break;
+                case "Chinese (Traditional)":
+                     LanguageBox.SelectedIndex = 8;
                     break;
             }
             Utilities.ParallelLogger.Log("[INFO] Config launched");
@@ -192,6 +206,18 @@ namespace AemulusModManager
         {
             main.deleteOldVersions = false;
             main.config.p5rSwitchConfig.deleteOldVersions = false;
+            main.updateConfig();
+        }
+
+        private void LooseFileChecked(object sender, RoutedEventArgs e)
+        {
+            main.config.p5rSwitchConfig.loadLooseFiles = true;
+            main.updateConfig();
+        }
+
+        private void LooseFileUnchecked(object sender, RoutedEventArgs e)
+        {
+            main.config.p5rSwitchConfig.loadLooseFiles = false;
             main.updateConfig();
         }
 

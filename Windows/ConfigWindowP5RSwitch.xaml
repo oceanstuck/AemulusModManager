@@ -41,11 +41,12 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Button Height="30" Width="110" Content="Unpack Base Files" Name="UnpackButton" Grid.Column="0" Click="UnpackPacsClick" Background ="White" VerticalAlignment="Center"/>
             <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="1">
                 <ComboBox x:Name="NotifBox" Width="120" FontSize="15" Text="Notifications" SelectedIndex="0" SelectionChanged="NotifBox_SelectionChanged">
-                    <ComboBoxItem Visibility="Collapsed">Notifications</ComboBoxItem>
+                    <ComboBoxItem Visibility="Collapsed" Content="Notifications"/>
                     <CheckBox x:Name="BuildWarningBox" Foreground="#f2f2f2" Content="Build Warning" Checked="BuildWarningChecked" Unchecked="BuildWarningUnchecked"/>
                     <CheckBox x:Name="BuildFinishedBox" Foreground="#f2f2f2" Content="Build Finished" Checked="BuildFinishedChecked" Unchecked="BuildFinishedUnchecked"/>
                     <CheckBox x:Name="ChangelogBox" Foreground="#f2f2f2" Content="Update Changelog" Checked="ChangelogChecked" Unchecked="ChangelogUnchecked"/>
@@ -58,9 +59,21 @@
                     <ComboBoxItem Foreground="#f2f2f2" Content="Italian"/>
                     <ComboBoxItem Foreground="#f2f2f2" Content="German"/>
                     <ComboBoxItem Foreground="#f2f2f2" Content="Spanish"/>
+                    <ComboBoxItem Foreground="#f2f2f2" Content="Japanese"/>
+                    <ComboBoxItem Foreground="#f2f2f2" Content="Korean"/>
+                    <ComboBoxItem Foreground="#f2f2f2" Content="Chinese (Simplified)"/>
+                    <ComboBoxItem Foreground="#f2f2f2" Content="Chinese (Traditional)"/>
                 </ComboBox>
             </Viewbox>
             <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="3">
+                <CheckBox Name="LooseFileBox" Foreground ="White" Checked="LooseFileChecked" Unchecked="LooseFileUnchecked">
+                    <TextBlock TextAlignment="Center">
+                        Loose File<LineBreak/>
+                        Loading
+                    </TextBlock>
+                </CheckBox>
+            </Viewbox>
+            <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="4">
                 <CheckBox Name="DeleteBox" Foreground ="White" Checked="DeleteChecked" Unchecked="DeleteUnchecked">
                     <TextBlock TextAlignment="Center">
                         Delete Old<LineBreak/>
@@ -68,7 +81,7 @@
                     </TextBlock>
                 </CheckBox>
             </Viewbox>
-            <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="4">
+            <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="5">
                 <CheckBox Name="UpdateBox" Foreground ="White" Checked="UpdateChecked" Unchecked="UpdateUnchecked">
                     <TextBlock TextAlignment="Center">
                         Enable Mod<LineBreak/>
@@ -76,7 +89,7 @@
                     </TextBlock>
                 </CheckBox>
             </Viewbox>
-            <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="5">
+            <Viewbox Stretch="Uniform" VerticalAlignment="Center" MinHeight="35" MaxHeight="35" Width="100" Grid.Column="6">
                 <CheckBox Name="UpdateAllBox" Foreground ="White" Checked="UpdateAllChecked" Unchecked="UpdateAllUnchecked" IsEnabled="False">
                     <TextBlock TextAlignment="Center">
                         Update All<LineBreak/>

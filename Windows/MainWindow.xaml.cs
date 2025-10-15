@@ -2495,39 +2495,29 @@ namespace AemulusModManager
                 }
                 else
                 {
-                    string path = modPath;
-                    if (game == "Persona 5")
+                    string path;
+                    switch (game)
                     {
-                        path = $@"{modPath}\{config.p5Config.CpkName}";
-                        Directory.CreateDirectory(path);
-                    }
-                    if (game == "Persona 1 (PSP)")
-                    {
-                        path = $@"{modPath}\Persona 1 (PSP)\PSP_GAME";
-                        Directory.CreateDirectory(path);
-                    }
-                    if (game == "Persona 3 Portable")
-                    {
-                        path = $@"{modPath}\{config.p3pConfig.cpkName.Replace(".cpk", String.Empty)}";
-                        Directory.CreateDirectory(path);
-                    }
-                    if (game == "Persona 4 Golden (Vita)")
-                    {
-                        path = $@"{modPath}\{config.p4gVitaConfig.cpkName.Replace(".cpk", String.Empty)}";
-                        Directory.CreateDirectory(path);
-                    }
-                    if (game == "Persona Q2" || game == "Persona Q")
-                    {
-                        path = $@"{modPath}\mod";
-                        Directory.CreateDirectory(path);
-                    }
-                    if (game == "Persona 5 Royal (PS4)")
-                    {
-                        var language = String.Empty;
+                        case "Persona 5":
+                            path = Path.Combine(modPath, config.p5Config.CpkName);
+                            break;
+                        case "Persona 1 (PSP)":
+                            path = Path.Combine(modPath, game, "PSP_GAME");
+                            break;
+                        case "Persona 3 Portable":
+                            path = Path.Combine(modPath, Path.GetFileNameWithoutExtension(config.p3pConfig.cpkName));
+                            break;
+                        case "Persona 4 Golden (Vita)":
+                            path = Path.Combine(modPath, Path.GetFileNameWithoutExtension(config.p4gVitaConfig.cpkName));
+                            break;
+                        case "Persona Q":
+                        case "Persona Q2":
+                            path = Path.Combine(modPath, "mod");
+                            break;
+                        case "Persona 5 Royal (PS4)":
+                            string language;
                         switch (config.p5rConfig.language)
                         {
-                            case "English":
-                                break;
                             case "French":
                                 language = "_F";
                                 break;
@@ -2540,15 +2530,21 @@ namespace AemulusModManager
                             case "Spanish":
                                 language = "_S";
                                 break;
+                                default:
+                                    language = String.Empty;
+                                    break;
                         }
-                        path = $@"{modPath}\{config.p5rConfig.cpkName.Replace(".cpk", String.Empty)}{language}";
-                        Directory.CreateDirectory(path);
+                            path = Path.Combine(modPath, Path.GetFileNameWithoutExtension(config.p5rConfig.cpkName)) + language;
+                            break;
+                        case "Persona 5 Royal (Switch)":
+                            path = config.p5rSwitchConfig.loadLooseFiles ? modPath : Path.Combine(modPath, "mods/romfs/CPK/PATCH1");
+                            break;
+                        default:
+                            path = modPath;
+                            break;
                     }
-                    if (game == "Persona 5 Royal (Switch)")
-                    {
-                        path = $@"{modPath}\mods\romfs\CPK\PATCH1";
                         Directory.CreateDirectory(path);
-                    }
+
                     if (buildWarning && Directory.EnumerateFileSystemEntries(path).Any())
                     {
                         bool YesNo = false;
@@ -2703,9 +2699,13 @@ namespace AemulusModManager
                             PreappfileAppend.Validate(Path.GetDirectoryName(path), cpkLang);
                         }
 
-                        if (game == "Persona 5" || (game == "Persona 5 Royal (PS4)" && config.p5rConfig.cpkName != "bind") || game == "Persona 5 Royal (Switch)"
+                        if (game == "Persona 5"
+                            || (game == "Persona 5 Royal (PS4)" && config.p5rConfig.cpkName != "bind")
+                            || (game == "Persona 5 Royal (Switch)" && !config.p5rSwitchConfig.loadLooseFiles)
                         || (game == "Persona 3 Portable" && config.p3pConfig.cpkName != "bind")
-                        || game == "Persona 4 Golden (Vita)" || game == "Persona Q2" || game == "Persona Q")
+                            || game == "Persona 4 Golden (Vita)"
+                            || game == "Persona Q2"
+                            || game == "Persona Q")
                         {
                             binMerge.MakeCpk(path, true);
                             if (!File.Exists($@"{path}.cpk"))
