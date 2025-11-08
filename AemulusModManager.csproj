@@ -519,6 +519,11 @@
     <Page Remove="Submodules\**" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="Utilities\FileMerging\BmdMerger.cs" />
+    <Compile Remove="Utilities\FileMerging\FlowMerger.cs" />
+    <Compile Remove="Utilities\FileMerging\PM1Merger.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="Antlr4.Runtime.dll" />
     <None Remove="Antlr4.Runtime.xml" />
     <None Remove="Assets\pq.png" />

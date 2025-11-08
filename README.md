@@ -121,13 +121,15 @@ If you're curious how the program actually works, I'll run you through it here.
 
 ### Bf/Flow Merging
 
-To create a mod that supports bf merging you replace the bf in the package with a flow file which **uses hooks** to change functions. For example if you had a mod which edited f007.bf, you would simply put the .flow file which you used to create the bf in the same place with the exact same name (so f007.flow in this case). You do not need to supply your own f007.bf, in fact if you do it will be replaced by an original copy anyway when building.
+To create a mod that supports bf merging you replace the bf in the package with a flow file which **uses hooks** to change functions. For example if you had a mod which edited f007.bf, you would simply put the .flow file which you used to create the bf in the same place with the exact same name (so f007.flow in this case). No flow file is required if you are only replacing messages; a .msg file containing **only new or changed messages** is enough.
 
-When Aemulus builds your mod it will see that there is a flow file and then copy the original bf from the game's unpacked files into the same folder as that flow. [Atlus Script Compiler](https://github.com/TGEnigma/Atlus-Script-Tools) will then attempt to compile the flow, the same way you would do it manually. Also, if there are any bf files with the same name and location in the previous packages instead of copying from the original files it will copy the bf from them.
+When Aemulus builds your mods it will make a list of .flow and .msg files that edit a particular bf. [Atlus Script Library](https://github.com/tge-was-taken/Atlus-Script-Tools) will then attempt to compile these using the original bf as a base. If there are any bf files with the same name and location but no corresponding flow, that'll be used as a base instead of the original file; if there *is* a corresponding flow in the same folder, however, it'll be ignored instead.
 
 ### Bmd and Pm1 Merging
 
-Bmd and Pm1 merging is done entirely automatically, meaning no additional work is required for mod authors. The way it works internally is the pm1s or bmds to be merged are compared with their original version by decompiling them into msg files. Then any messages that are different to the original are added to a list, if both files edit the same message the higher priority one will be added. Then all of the changed messages are replaced in a msg files which is finally recompiled as a bmd or pm1 to be used.
+To merge bmds and pm1s, include a .msg file with **only new and changed** messages in place of the original bmd or pm1. Legacy support for full bmds/pm1s is included though it just converts the mod install to the new format; it is recommended to package your mod for the new format in the first place to speed up compile time. Note that pm1 merging doesn't support replacing embedded models.
+
+Like with bf merging, Aemulus will make a list of .msg files that edit the same bmd or pm1 while building. The embedded bmd in a pm1 will be extracted with [LEET](https://github.com/0HMyC/Libellus-Event-Tools) if it hasn't already been extracted, then used as a base while compiling.
 
 ## How Binary Patching Works
 

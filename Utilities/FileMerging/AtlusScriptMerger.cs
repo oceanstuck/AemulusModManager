@@ -35,7 +35,7 @@ namespace AemulusModManager.Utilities.FileMerging
         private Dictionary<string, AtlusScriptFileInfo> pm1s;
 
         private string game;
-        private string originalFileDir;
+        private string vanillaFileDir;
         private string buildDir;
         private string lang;
 
@@ -46,76 +46,127 @@ namespace AemulusModManager.Utilities.FileMerging
 
         private static string[] scriptExtensions = { ".flow", ".msg", ".bf", ".bmd", ".pm1" };
 
-        public AtlusScriptMerger(string _game, string _buildDir, string language)
+        public AtlusScriptMerger(string _game, string _buildDir, string _language)
         {
             game = _game;
-            originalFileDir = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Original", _game);
+            vanillaFileDir = Path.Combine(Utils.originalDir, _game);
             buildDir = _buildDir;
-            lang = language;
+            lang = _language;
 
             bfs = new Dictionary<string, AtlusScriptFileInfo>();
             bmds = new Dictionary<string, AtlusScriptFileInfo>();
             pm1s = new Dictionary<string, AtlusScriptFileInfo>();
 
-            LibraryLookup.SetLibraryPath(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Libraries"));
-            AtlusEncoding.SetCharsetDirectory(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Charsets"));
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            encoding = GetEncodingByGame(_game, _language);
+            LibraryLookup.SetLibraryPath(Path.Combine(Utils.aemDir, "Libraries"));
 
             switch (game)
             {
                 // would like to add non-efigs language support at some point but i dont know enough about the individual games to do it
                 case "Persona 3 FES":
                     library = LibraryLookup.GetLibrary("P3F");
-                    encoding = AtlusEncoding.Create("P3");
                     flowVersion = FlowFormatVersion.Version1;
                     msgVersion = MessageFormatVersion.Version1;
                     break;
                 case "Persona 3 Portable":
                     library = LibraryLookup.GetLibrary("P3P");
-                    encoding = AtlusEncoding.Create("P3");
                     flowVersion = FlowFormatVersion.Version1;
                     msgVersion = MessageFormatVersion.Version1;
                     break;
                 case "Persona 4 Golden (PC 32-Bit)":
                 case "Persona 4 Golden (Vita)":
                     library = LibraryLookup.GetLibrary("P4G");
-                    encoding = AtlusEncoding.Create("P4G"); // unsure if p4g_efigs works here as charset was created for pc 64-bit. recommend switching if it works without crashes
                     flowVersion = FlowFormatVersion.Version1;
                     msgVersion = MessageFormatVersion.Version1;
                     break;
                 case "Persona 5":
                     library = LibraryLookup.GetLibrary("P5");
-                    encoding = AtlusEncoding.Create("P5");
                     flowVersion = FlowFormatVersion.Version3BigEndian;
                     msgVersion = MessageFormatVersion.Version1BigEndian;
                     break;
                 case "Persona 5 Royal (PS4)":
                     library = LibraryLookup.GetLibrary("P5R");
-                    encoding = AtlusEncoding.Create("P5");
                     flowVersion = FlowFormatVersion.Version3BigEndian;
-                    msgVersion = MessageFormatVersion.Version1BigEndian;
+                    msgVersion = MessageFormatVersion.Version1;
                     break;
                 case "Persona 5 Royal (Switch)":
                     library = LibraryLookup.GetLibrary("P5R");
-                    encoding = AtlusEncoding.Create("P5R_EFIGS");
                     flowVersion = FlowFormatVersion.Version3BigEndian;
                     msgVersion = MessageFormatVersion.Version1BigEndian;
                     break;
                 case "Persona Q": // script tools doesnt actually include a library for q1 but q2 is v similar internally so should be good enough for now
                 case "Persona Q2":
                     library = LibraryLookup.GetLibrary("PQ2");
-                    encoding = ShiftJISEncoding.Instance;
                     flowVersion = FlowFormatVersion.Version2;
                     msgVersion = MessageFormatVersion.Version1;
                     break;
                 default:
                     library = null;
-                    encoding = Encoding.UTF8;
                     flowVersion = FlowFormatVersion.Version1;
                     msgVersion = MessageFormatVersion.Version1;
                     Utilities.ParallelLogger.Log("[WARNING] Unrecognized game. Script Tools arguments have been set to default.");
                     break;
             }
+        }
+
+        public static Encoding GetEncodingByGame(string game, string language)
+        {
+            AtlusEncoding.SetCharsetDirectory(Path.Combine(Utils.aemDir, "Charsets"));
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            Encoding _encoding = null;
+            switch (game)
+            {
+                // would like to add non-efigs language support at some point but i dont know enough about the individual games to do it
+                case "Persona 3 FES":
+                    _encoding = AtlusEncoding.Create("P3");
+                    break;
+                case "Persona 3 Portable":
+                    _encoding = AtlusEncoding.Create("P3P_EFIGS");
+                    break;
+                case "Persona 4 Golden (PC 32-Bit)":
+                case "Persona 4 Golden (Vita)":
+                    _encoding = AtlusEncoding.Create("P4G_EFIGS");
+                    break;
+                case "Persona 5":
+                    _encoding = AtlusEncoding.Create("P5");
+                    break;
+                case "Persona 5 Royal (PS4)":
+                    _encoding = AtlusEncoding.Create("P5");
+                    break;
+                case "Persona 5 Royal (Switch)":
+                    // TODO: just turn language into an enum by god
+                    switch (language)
+                    {
+                        case "Japanese":
+                            _encoding = AtlusEncoding.Persona5RoyalJapanese;
+                            break;
+                        case "Korean":
+                            _encoding = AtlusEncoding.Create("P5_Korean");
+                            break;
+                        case "Chinese (Simplified)":
+                            _encoding = AtlusEncoding.Create("P5R_CHS");
+                            break;
+                        case "Chinese (Traditional)":
+                            _encoding = AtlusEncoding.Create("P5R_CHT");
+                            break;
+                        default:
+                            _encoding = AtlusEncoding.Create("P5R_EFIGS");
+                            break;
+                    }
+                    break;
+                case "Persona Q": // script tools doesnt actually include a library for q1 but q2 is v similar internally so should be good enough for now
+                case "Persona Q2":
+                    _encoding = ShiftJISEncoding.Instance;
+                    break;
+                default:
+                    _encoding = Encoding.UTF8;
+                    Utilities.ParallelLogger.Log("[WARNING] Unrecognized encoding. Defaulting to UTF8.");
+                    break;
+
+            }
+
+            return _encoding;
         }
 
         public async Task FindImports(List<string> modList)
@@ -147,7 +198,7 @@ namespace AemulusModManager.Utilities.FileMerging
                             relativePath = relativePath.Substring(relativePath.IndexOf(Path.DirectorySeparatorChar) + 1);
                         }
 
-                        var originalFile = Path.Combine(originalFileDir, dataFolder, relativePath);
+                        var originalFile = Path.Combine(vanillaFileDir, dataFolder, relativePath);
                         var fileType = ".bmd";
                         ref var scriptFiles = ref bmds;
 
@@ -214,11 +265,8 @@ namespace AemulusModManager.Utilities.FileMerging
                                 else if (!File.Exists(Path.ChangeExtension(import, ".msg")))
                                 {
                                     var prunedImport = await TryPruneDuplicateMessages(scriptFiles[relativePath].baseFile, import, true);
-                                    if (prunedImport == null)
-                                    {
-                                        // todo error message
-                                        return;
-                                    }
+                                    if (prunedImport == null) { return; }
+
                                     scriptFiles[relativePath].imports.Add(prunedImport);
                                 }
 
@@ -226,14 +274,11 @@ namespace AemulusModManager.Utilities.FileMerging
                                 break;
                             case ".bmd":
                                 if (scriptFiles[relativePath].baseFile == null) { scriptFiles[relativePath].baseFile = import; }
-                                else if (!File.Exists(Path.ChangeExtension(import, ".msg"))) // legacy support for precompiled bmds/pm1s, exports msg matching new format if none exists then registers that instead of full bmd/pm1
+                                else if (!File.Exists(Path.ChangeExtension(import, ".msg"))) // legacy support for precompiled bmds/pm1s, exports msg file matching new format if none exists then registers that instead of full bmd/pm1
                                 {
                                     var prunedImport = await TryPruneDuplicateMessages(scriptFiles[relativePath].baseFile, import);
-                                    if (prunedImport == null)
-                                    {
-                                        // todo error message
-                                        return;
-                                    }
+                                    if (prunedImport == null) { return; }
+
                                     scriptFiles[relativePath].imports.Add(prunedImport);
                                 }
                                 break;
@@ -277,8 +322,7 @@ namespace AemulusModManager.Utilities.FileMerging
                                 Utilities.ParallelLogger.Log($"[ERROR] Failed to compile {bf.Key}.");
                                 return;
                             }
-                            var bfBinary = compiledBf.ToBinary();
-                            bfBinary.ToFile(bf.Value.destFile);
+                            compiledBf.ToFile(bf.Value.destFile);
                         }
                         catch (Exception ex)
                         {
@@ -330,8 +374,7 @@ namespace AemulusModManager.Utilities.FileMerging
                         return;
                     }
 
-                    var bmdBinary = compiledBmd.ToBinary();
-                    bmdBinary.ToFile(destBmd);
+                    compiledBmd.ToFile(destBmd);
                 }
                 catch (Exception ex)
                 {
